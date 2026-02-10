@@ -1,13 +1,14 @@
-export interface StoredVideo {
+import { ChatMessage } from '../types';
+
+export interface StoredChat {
   id: string;
-  blob: Blob;
-  name: string;
-  createdAt: number;
-  size: number;
+  timestamp: number;
+  title: string;
+  messages: ChatMessage[];
 }
 
-const DB_NAME = 'NovaVideoDB';
-const STORE_NAME = 'videos';
+const DB_NAME = 'NovaChatDB';
+const STORE_NAME = 'chats';
 
 const initDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
@@ -23,27 +24,34 @@ const initDB = (): Promise<IDBDatabase> => {
   });
 };
 
-export const saveVideo = async (blob: Blob, customName?: string): Promise<void> => {
+export const saveChat = async (messages: ChatMessage[]): Promise<void> => {
+  if (messages.length === 0) return;
+
   const db = await initDB();
   const tx = db.transaction(STORE_NAME, 'readwrite');
   const store = tx.objectStore(STORE_NAME);
   
-  const video: StoredVideo = {
+  // Generate a title based on the first user message, or date
+  const firstUserMsg = messages.find(m => m.role === 'user');
+  const title = firstUserMsg 
+    ? (firstUserMsg.text.slice(0, 30) + (firstUserMsg.text.length > 30 ? '...' : ''))
+    : `Conversation ${new Date().toLocaleString()}`;
+
+  const chat: StoredChat = {
     id: crypto.randomUUID(),
-    blob,
-    name: customName || `Recording ${new Date().toLocaleString()}`,
-    createdAt: Date.now(),
-    size: blob.size
+    timestamp: Date.now(),
+    title,
+    messages
   };
   
-  store.add(video);
+  store.add(chat);
   return new Promise((resolve, reject) => {
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
 };
 
-export const getVideos = async (): Promise<StoredVideo[]> => {
+export const getChats = async (): Promise<StoredChat[]> => {
   const db = await initDB();
   const tx = db.transaction(STORE_NAME, 'readonly');
   const store = tx.objectStore(STORE_NAME);
@@ -51,19 +59,29 @@ export const getVideos = async (): Promise<StoredVideo[]> => {
   
   return new Promise((resolve, reject) => {
     request.onsuccess = () => {
-      const results = request.result as StoredVideo[];
-      // Sort by newest first
-      resolve(results.sort((a, b) => b.createdAt - a.createdAt));
+      const results = request.result as StoredChat[];
+      resolve(results.sort((a, b) => b.timestamp - a.timestamp));
     };
     request.onerror = () => reject(request.error);
   });
 };
 
-export const deleteVideo = async (id: string): Promise<void> => {
+export const deleteChat = async (id: string): Promise<void> => {
   const db = await initDB();
   const tx = db.transaction(STORE_NAME, 'readwrite');
   const store = tx.objectStore(STORE_NAME);
   store.delete(id);
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+};
+
+export const clearAllChats = async (): Promise<void> => {
+  const db = await initDB();
+  const tx = db.transaction(STORE_NAME, 'readwrite');
+  const store = tx.objectStore(STORE_NAME);
+  store.clear();
   return new Promise((resolve, reject) => {
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);

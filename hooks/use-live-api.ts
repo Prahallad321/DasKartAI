@@ -5,13 +5,24 @@ import { VoiceId } from '../types';
 
 interface UseLiveApiProps {
   onConnectionChange?: (connected: boolean) => void;
+  onTranscript?: (text: string, role: 'user' | 'model', isFinal: boolean) => void;
   voiceName?: VoiceId;
+  systemInstruction?: string;
 }
 
-export function useLiveApi({ onConnectionChange, voiceName = 'Puck' }: UseLiveApiProps) {
+export function useLiveApi({ onConnectionChange, onTranscript, voiceName = 'Puck', systemInstruction }: UseLiveApiProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isError, setIsError] = useState<string | null>(null);
   const [volume, setVolume] = useState(0); // For visualizer
+
+  // Refs for callbacks to handle stale closures
+  const onConnectionChangeRef = useRef(onConnectionChange);
+  const onTranscriptRef = useRef(onTranscript);
+
+  useEffect(() => {
+    onConnectionChangeRef.current = onConnectionChange;
+    onTranscriptRef.current = onTranscript;
+  }, [onConnectionChange, onTranscript]);
 
   // Audio Contexts
   const inputAudioContextRef = useRef<AudioContext | null>(null);
@@ -42,9 +53,7 @@ export function useLiveApi({ onConnectionChange, voiceName = 'Puck' }: UseLiveAp
       videoIntervalRef.current = null;
     }
 
-    // Close session (no direct close method on session promise, relying on onclose callback logic if needed, 
-    // but we can't force close the promise itself easily without tearing down context)
-    // Note: The prompt mentions session.close() is available on the session object.
+    // Close session
     sessionRef.current?.then(session => {
         try {
             session.close();
@@ -77,9 +86,9 @@ export function useLiveApi({ onConnectionChange, voiceName = 'Puck' }: UseLiveAp
     outputAudioContextRef.current = null;
 
     setIsConnected(false);
-    onConnectionChange?.(false);
+    onConnectionChangeRef.current?.(false);
     setVolume(0);
-  }, [onConnectionChange]);
+  }, []);
 
   const connect = useCallback(async (videoElement?: HTMLVideoElement) => {
     try {
@@ -126,7 +135,9 @@ export function useLiveApi({ onConnectionChange, voiceName = 'Puck' }: UseLiveAp
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName } },
           },
-          systemInstruction: "You are Nova, a helpful, witty, and friendly AI assistant. You speak naturally, like a human, with concise responses. You can see what the user shows you via camera if enabled.",
+          systemInstruction: systemInstruction || "You are Nova, a helpful, witty, and friendly AI assistant. You speak naturally, like a human, with concise responses. You can see what the user shows you via camera if enabled.",
+          inputAudioTranscription: { model: "google_provided_model" }, 
+          outputAudioTranscription: { model: "google_provided_model" },
         },
       };
 
@@ -136,7 +147,7 @@ export function useLiveApi({ onConnectionChange, voiceName = 'Puck' }: UseLiveAp
           onopen: () => {
             console.log("Gemini Live Session Opened");
             setIsConnected(true);
-            onConnectionChange?.(true);
+            onConnectionChangeRef.current?.(true);
             
             // Start processing audio input
             processor.onaudioprocess = (e) => {
@@ -154,6 +165,17 @@ export function useLiveApi({ onConnectionChange, voiceName = 'Puck' }: UseLiveAp
             };
           },
           onmessage: async (message: LiveServerMessage) => {
+            // Handle Transcriptions
+            if (message.serverContent?.outputTranscription) {
+              onTranscriptRef.current?.(message.serverContent.outputTranscription.text, 'model', false);
+            }
+            if (message.serverContent?.inputTranscription) {
+              onTranscriptRef.current?.(message.serverContent.inputTranscription.text, 'user', false);
+            }
+            if (message.serverContent?.turnComplete) {
+              onTranscriptRef.current?.('', 'model', true);
+            }
+
             // Handle Audio Output
             const base64Audio = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
             if (base64Audio && outputAudioContextRef.current) {
@@ -240,11 +262,28 @@ export function useLiveApi({ onConnectionChange, voiceName = 'Puck' }: UseLiveAp
       setIsError(e.message || "Failed to connect");
       cleanup();
     }
-  }, [cleanup, onConnectionChange, voiceName]);
+  }, [cleanup, voiceName, systemInstruction]);
+
+  const sendText = useCallback((text: string) => {
+    if (sessionRef.current) {
+        sessionRef.current.then(session => {
+            session.send({
+                clientContent: {
+                    turns: [{
+                        role: 'user',
+                        parts: [{ text }]
+                    }],
+                    turnComplete: true
+                }
+            });
+        });
+    }
+  }, []);
 
   return {
     connect,
     disconnect: cleanup,
+    sendText,
     isConnected,
     isError,
     outputAnalyser: outputAnalyserRef.current,

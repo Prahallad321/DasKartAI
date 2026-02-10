@@ -1,11 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLiveApi } from './hooks/use-live-api';
 import { AudioVisualizer } from './components/AudioVisualizer';
 import { ControlTray } from './components/ControlTray';
 import { VideoGallery } from './components/VideoGallery';
-import { Settings, Sparkles, AlertCircle, Film } from 'lucide-react';
-import { VoiceId } from './types';
+import { Chat } from './components/Chat';
+import { Settings, Sparkles, AlertCircle, Film, MessageSquare } from 'lucide-react';
+import { VoiceId, ChatMessage } from './types';
 import { saveVideo } from './utils/video-storage';
+import { saveChat } from './utils/chat-storage';
 
 const App: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -13,32 +15,107 @@ const App: React.FC = () => {
   const [isCamOn, setIsCamOn] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState<VoiceId>('Puck');
+  const [systemInstruction, setSystemInstruction] = useState("You are Nova, a helpful, witty, and friendly AI assistant. You speak naturally, like a human.");
   const [showSettings, setShowSettings] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  
+  // Refs for auto-saving
+  const messagesRef = useRef<ChatMessage[]>([]);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
+  // Handle incoming transcripts
+  const handleTranscript = useCallback((text: string, role: 'user' | 'model', isFinal: boolean) => {
+    setMessages(prev => {
+      const lastMsg = prev[prev.length - 1];
+      
+      // If the last message is from the same role and not final, update it
+      if (lastMsg && lastMsg.role === role && !lastMsg.isFinal && !isFinal) {
+        const updatedMsg = { ...lastMsg, text: lastMsg.text + text };
+        return [...prev.slice(0, -1), updatedMsg];
+      }
+
+      // If text is empty (e.g. turnComplete), don't add new message but mark last as final
+      if (text === '' && isFinal) {
+         if (lastMsg && lastMsg.role === role) {
+             const finalizedMsg = { ...lastMsg, isFinal: true };
+             return [...prev.slice(0, -1), finalizedMsg];
+         }
+         return prev;
+      }
+
+      // Otherwise add new message
+      if (text) {
+        return [...prev, {
+            id: crypto.randomUUID(),
+            role,
+            text,
+            timestamp: Date.now(),
+            isFinal: false
+        }];
+      }
+      
+      return prev;
+    });
+  }, []);
+
   const { 
     connect, 
     disconnect, 
+    sendText,
     isConnected, 
     isError, 
     outputAnalyser, 
     inputAnalyser 
   } = useLiveApi({
     voiceName: selectedVoice,
+    systemInstruction,
     onConnectionChange: (connected) => {
       if (!connected) {
         setIsCamOn(false); // Reset cam on disconnect
         if (isRecording) {
             stopRecording();
         }
+        // Auto-save chat on disconnect
+        if (messagesRef.current.length > 0) {
+            saveChat(messagesRef.current).catch(console.error);
+        }
+      } else {
+        // Connected: Clear messages for new session? 
+        // Or keep them? Let's keep them so context is visible, 
+        // but maybe we can add a divider. For now, just keep.
       }
-    }
+    },
+    onTranscript: handleTranscript
   });
 
+  const handleSendMessage = (text: string) => {
+    // Add user message immediately
+    setMessages(prev => [...prev, {
+        id: crypto.randomUUID(),
+        role: 'user',
+        text,
+        timestamp: Date.now(),
+        isFinal: true
+    }]);
+    
+    // Send to API
+    sendText(text);
+  };
+
   const handleConnect = async () => {
+    if (messages.length > 0) {
+        // Optional: clear messages on new connection to avoid saving duplicates
+        // or just let them accumulate and save the whole log. 
+        // Clearing is cleaner for "Sessions".
+        setMessages([]);
+    }
     // If cam is enabled, we need to start the video stream first
     if (isCamOn) {
         await startCamera();
@@ -153,6 +230,13 @@ const App: React.FC = () => {
         
         <div className="flex items-center gap-2">
           <button 
+            onClick={() => setShowChat(!showChat)}
+            className={`p-2 rounded-full hover:bg-white/10 transition-colors relative group ${showChat ? 'bg-white/10 text-nova-blue' : 'text-gray-400'}`}
+            title="Chat"
+          >
+            <MessageSquare size={20} className="group-hover:text-blue-400 transition-colors" />
+          </button>
+          <button 
             onClick={() => setShowGallery(true)}
             className="p-2 rounded-full hover:bg-white/10 transition-colors relative group"
             title="Recordings"
@@ -173,31 +257,53 @@ const App: React.FC = () => {
         <VideoGallery onClose={() => setShowGallery(false)} />
       )}
 
+      {/* Chat Interface */}
+      {showChat && (
+        <Chat 
+            messages={messages} 
+            onSendMessage={handleSendMessage} 
+            onClose={() => setShowChat(false)} 
+        />
+      )}
+
       {/* Settings Modal */}
       {showSettings && (
-        <div className="absolute top-20 right-6 bg-gray-900/90 backdrop-blur-lg border border-white/10 p-6 rounded-2xl z-50 w-72 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-200">
-          <h3 className="text-lg font-semibold mb-4 text-white">Assistant Voice</h3>
-          <div className="space-y-2">
-            {['Puck', 'Charon', 'Kore', 'Fenrir', 'Zephyr'].map((voice) => (
-              <button
-                key={voice}
-                onClick={() => {
-                  setSelectedVoice(voice as VoiceId);
-                  if (isConnected) {
-                    disconnect();
-                  }
-                }}
-                className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
-                  selectedVoice === voice 
-                    ? 'bg-nova-blue text-white shadow-lg shadow-blue-900/50' 
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                }`}
-              >
-                {voice}
-              </button>
-            ))}
+        <div className="absolute top-20 right-6 bg-gray-900/90 backdrop-blur-lg border border-white/10 p-6 rounded-2xl z-50 w-80 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-200">
+          <h3 className="text-lg font-semibold mb-4 text-white">Assistant Settings</h3>
+          
+          <div className="mb-6">
+            <label className="text-xs text-gray-400 uppercase font-bold mb-2 block">Voice</label>
+            <div className="space-y-2">
+                {['Puck', 'Charon', 'Kore', 'Fenrir', 'Zephyr'].map((voice) => (
+                <button
+                    key={voice}
+                    onClick={() => {
+                    setSelectedVoice(voice as VoiceId);
+                    if (isConnected) disconnect();
+                    }}
+                    className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                    selectedVoice === voice 
+                        ? 'bg-nova-blue text-white shadow-lg shadow-blue-900/50' 
+                        : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                    }`}
+                >
+                    {voice}
+                </button>
+                ))}
+            </div>
           </div>
-          <p className="text-xs text-gray-500 mt-4">Reconnect to apply voice changes.</p>
+
+          <div>
+            <label className="text-xs text-gray-400 uppercase font-bold mb-2 block">System Instruction (Persona)</label>
+            <textarea 
+                value={systemInstruction}
+                onChange={(e) => setSystemInstruction(e.target.value)}
+                className="w-full h-24 bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-gray-200 focus:outline-none focus:border-nova-blue resize-none"
+                placeholder="e.g. You are a helpful assistant..."
+            />
+          </div>
+
+          <p className="text-xs text-gray-500 mt-4">Reconnect to apply changes.</p>
         </div>
       )}
 

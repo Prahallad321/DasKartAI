@@ -15,3 +15,11 @@ export type VoiceId = 'Puck' | 'Charon' | 'Kore' | 'Fenrir' | 'Zephyr';
 export interface LiveConfig {
   voice: VoiceId;
 }
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'model';
+  text: string;
+  timestamp: number;
+  isFinal?: boolean;
+}
