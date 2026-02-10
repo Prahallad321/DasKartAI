@@ -1,0 +1,43 @@
+name: nova_ai
+description: Human-like Voice AI Assistant
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management
+  provider: ^6.1.1
+  
+  # Networking
+  web_socket_channel: ^3.0.0
+  http: ^1.2.0
+  
+  # Audio (Raw PCM Streaming)
+  sound_stream: ^0.3.0
+  permission_handler: ^11.3.0
+  
+  # Camera & Image
+  camera: ^0.10.5+9
+  image: ^4.1.7
+  
+  # Storage
+  path_provider: ^2.1.2
+  
+  # Video Playback
+  video_player: ^2.8.2
+  
+  # Icons
+  lucide_icons: ^0.300.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true

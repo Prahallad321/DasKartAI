@@ -1,0 +1,8 @@
+{
+  "name": "Nova - Human-like Voice AI",
+  "description": "A natural, real-time voice assistant powered by Gemini Live API, capable of fluid human-like conversation.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
