@@ -92,6 +92,10 @@ export function useLiveApi({ onConnectionChange, onTranscript, voiceName = 'Puck
 
   const connect = useCallback(async (videoElement?: HTMLVideoElement) => {
     try {
+      if (!process.env.API_KEY) {
+        throw new Error("API_KEY not found in environment");
+      }
+
       setIsError(null);
       
       // Initialize Audio Contexts
@@ -136,8 +140,9 @@ export function useLiveApi({ onConnectionChange, onTranscript, voiceName = 'Puck
             voiceConfig: { prebuiltVoiceConfig: { voiceName } },
           },
           systemInstruction: systemInstruction || "You are Nova, a helpful, witty, and friendly AI assistant. You speak naturally, like a human, with concise responses. You can see what the user shows you via camera if enabled.",
-          inputAudioTranscription: { model: "google_provided_model" }, 
-          outputAudioTranscription: { model: "google_provided_model" },
+          // Fix: Use empty objects to enable transcription, do not pass "model" string
+          inputAudioTranscription: {}, 
+          outputAudioTranscription: {},
         },
       };
 

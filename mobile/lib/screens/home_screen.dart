@@ -459,30 +459,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-          // Error Toast
-          if (gemini.error != null)
-             Positioned(
-               top: 100,
-               left: 20,
-               right: 20,
-               child: Container(
-                 padding: const EdgeInsets.all(12),
-                 decoration: BoxDecoration(
-                   color: Colors.red.withOpacity(0.1),
-                   borderRadius: BorderRadius.circular(30),
-                   border: Border.all(color: Colors.red.withOpacity(0.5)),
-                 ),
-                 child: Row(
-                   mainAxisAlignment: MainAxisAlignment.center,
-                   children: [
-                     const Icon(LucideIcons.alertCircle, color: Colors.redAccent, size: 16),
-                     const SizedBox(width: 8),
-                     Expanded(child: Text(gemini.error!, style: const TextStyle(color: Colors.redAccent, fontSize: 12), overflow: TextOverflow.ellipsis)),
-                   ],
-                 ),
-               ),
-             ),
-
           // Control Tray (Bottom Layer - Always visible)
           // Hide control tray if keyboard is open to avoid clutter
           if (keyboardHeight == 0)

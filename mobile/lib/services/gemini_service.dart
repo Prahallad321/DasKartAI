@@ -91,8 +91,9 @@ class GeminiService extends ChangeNotifier {
                 "prebuilt_voice_config": {"voice_name": _currentVoice}
               }
             },
-            "input_audio_transcription": {"model": "google_provided_model"},
-            "output_audio_transcription": {"model": "google_provided_model"}
+            // Fix: Use empty objects to enable transcription, do not pass "model" string which causes errors
+            "input_audio_transcription": {},
+            "output_audio_transcription": {}
           },
           "system_instruction": {
             "parts": [

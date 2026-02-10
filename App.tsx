@@ -21,12 +21,17 @@ const App: React.FC = () => {
   const [showChat, setShowChat] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   
-  // Refs for auto-saving
+  // Refs for auto-saving and cleanup
   const messagesRef = useRef<ChatMessage[]>([]);
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
   
+  const isRecordingRef = useRef(false);
+  useEffect(() => {
+    isRecordingRef.current = isRecording;
+  }, [isRecording]);
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
@@ -79,7 +84,7 @@ const App: React.FC = () => {
     onConnectionChange: (connected) => {
       if (!connected) {
         setIsCamOn(false); // Reset cam on disconnect
-        if (isRecording) {
+        if (isRecordingRef.current) {
             stopRecording();
         }
         // Auto-save chat on disconnect
@@ -212,7 +217,7 @@ const App: React.FC = () => {
   useEffect(() => {
     return () => {
         stopCamera();
-        if (isRecording) stopRecording();
+        if (isRecordingRef.current) stopRecording();
     };
   }, []);
 
