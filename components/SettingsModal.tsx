@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { X, Settings, Mic, MessageSquare, Check } from 'lucide-react';
+import { X, Settings, Mic, MessageSquare, Check, Cpu, Zap, Sparkles, Video } from 'lucide-react';
 import { VoiceId } from '../types';
 
 interface SettingsModalProps {
@@ -9,6 +9,8 @@ interface SettingsModalProps {
   onVoiceChange: (voice: VoiceId) => void;
   systemInstruction: string;
   onSystemInstructionChange: (instruction: string) => void;
+  selectedModel: string;
+  onModelChange: (model: string) => void;
 }
 
 const VOICES: { id: VoiceId; label: string; desc: string }[] = [
@@ -19,12 +21,43 @@ const VOICES: { id: VoiceId; label: string; desc: string }[] = [
   { id: 'Zephyr', label: 'Zephyr', desc: 'Energetic, higher pitch, friendly' },
 ];
 
+const MODELS = [
+  { category: 'Gemini (Google)', items: [
+      { id: 'gemini-2.5-flash-native-audio-preview-12-2025', label: 'Gemini 2.5 Flash Live', desc: 'Optimized for Real-time Audio/Video' },
+      { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', desc: 'Text-out model' },
+      { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', desc: 'Text-out model' },
+      { id: 'gemini-2.0-flash', label: 'Gemini 2 Flash', desc: 'Text-out model' },
+      { id: 'gemini-2.0-flash-exp', label: 'Gemini 2 Flash Exp', desc: 'Experimental model' },
+      { id: 'gemini-2.0-flash-lite', label: 'Gemini 2 Flash Lite', desc: 'Lightweight model' },
+      { id: 'gemini-2.5-flash-tts', label: 'Gemini 2.5 Flash TTS', desc: 'Multi-modal generative' },
+      { id: 'gemini-2.5-pro-tts', label: 'Gemini 2.5 Pro TTS', desc: 'Multi-modal generative' },
+      { id: 'gemma-3-1b', label: 'Gemma 3 1B', desc: 'Open model' },
+      { id: 'gemma-3-4b', label: 'Gemma 3 4B', desc: 'Open model' }
+  ]},
+  { category: 'OpenAI (Frontier)', items: [
+      { id: 'gpt-5.2', label: 'GPT-5.2', desc: 'Best for coding & agentic tasks' },
+      { id: 'gpt-5-mini', label: 'GPT-5 mini', desc: 'Faster, cost-efficient version' },
+      { id: 'gpt-5-nano', label: 'GPT-5 nano', desc: 'Fastest, most cost-efficient' },
+      { id: 'gpt-5.2-pro', label: 'GPT-5.2 pro', desc: 'Smarter, precise responses' },
+      { id: 'gpt-5', label: 'GPT-5', desc: 'Intelligent reasoning model' },
+      { id: 'gpt-4.1', label: 'GPT-4.1', desc: 'Smartest non-reasoning model' },
+      { id: 'gpt-4o', label: 'GPT-4o', desc: 'Omni model' }
+  ]},
+  { category: 'Visual & Video (Google)', items: [
+      { id: 'gemini-3-pro-image-preview', label: 'Gemini 3 Pro Image', desc: 'Nano Banana Pro - High Fidelity' },
+      { id: 'veo-3.1-generate-preview', label: 'Veo 3 Generate', desc: 'High Quality Video Generation' },
+      { id: 'veo-3.1-fast-generate-preview', label: 'Veo 3 Fast Generate', desc: 'Low Latency Video Generation' }
+  ]}
+];
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({ 
   onClose, 
   selectedVoice, 
   onVoiceChange,
   systemInstruction,
-  onSystemInstructionChange
+  onSystemInstructionChange,
+  selectedModel,
+  onModelChange
 }) => {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -47,6 +80,43 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         <div className="p-6 space-y-8 overflow-y-auto custom-scrollbar">
           
+          {/* Model Selection */}
+          <div className="space-y-4">
+            <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
+              <Cpu size={16} className="text-purple-400" />
+              AI Model
+            </label>
+            <div className="grid grid-cols-1 gap-4">
+               {MODELS.map((group) => (
+                 <div key={group.category} className="space-y-2">
+                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">{group.category}</div>
+                    {group.items.map((model) => (
+                        <button
+                          key={model.id}
+                          onClick={() => onModelChange(model.id)}
+                          className={`w-full relative flex items-center p-3 rounded-xl border transition-all text-left group ${
+                            selectedModel === model.id 
+                              ? 'bg-blue-600/10 border-blue-500 ring-1 ring-blue-500/50' 
+                              : 'bg-slate-800/50 border-slate-700 hover:border-slate-600 hover:bg-slate-800'
+                          }`}
+                        >
+                           <div className={`p-2 rounded-lg mr-3 ${selectedModel === model.id ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                              {model.id.includes('gpt') ? <Zap size={16} /> : model.id.includes('veo') ? <Video size={16} /> : <Sparkles size={16} />}
+                           </div>
+                           <div className="flex-1">
+                              <div className={`font-medium text-sm ${selectedModel === model.id ? 'text-blue-400' : 'text-slate-200'}`}>{model.label}</div>
+                              <div className="text-[10px] text-slate-500 group-hover:text-slate-400">{model.desc}</div>
+                           </div>
+                           {selectedModel === model.id && <Check size={18} className="text-blue-500" />}
+                        </button>
+                    ))}
+                 </div>
+               ))}
+            </div>
+          </div>
+
+          <div className="w-full h-px bg-slate-800" />
+
           {/* Voice Selection */}
           <div className="space-y-4">
             <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
@@ -90,6 +160,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               Note: Changing voice will take effect on the next connection.
             </p>
           </div>
+
+          <div className="w-full h-px bg-slate-800" />
 
           {/* System Instruction */}
           <div className="space-y-3">

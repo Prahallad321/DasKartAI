@@ -28,40 +28,63 @@ const initDB = (): Promise<IDBDatabase> => {
 export const saveChat = async (id: string, messages: ChatMessage[]): Promise<void> => {
   if (messages.length === 0) return;
 
-  const db = await initDB();
-  const tx = db.transaction(STORE_NAME, 'readwrite');
-  const store = tx.objectStore(STORE_NAME);
-  
-  return new Promise((resolve, reject) => {
-      const getReq = store.get(id);
-      
-      getReq.onsuccess = () => {
-          const existing = getReq.result as StoredChat | undefined;
-          
-          let title = existing?.title;
-          
-          // Generate title if new or if existing title was default/empty and we have user messages now
-          if (!title) {
-             const firstUserMsg = messages.find(m => m.role === 'user');
-             title = firstUserMsg 
-                ? (firstUserMsg.text.slice(0, 30) + (firstUserMsg.text.length > 30 ? '...' : ''))
-                : `Conversation ${new Date().toLocaleString()}`;
-          }
+  try {
+    const db = await initDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
     
-          const chat: StoredChat = {
-            id,
-            timestamp: Date.now(),
-            title,
-            messages
-          };
-          
-          const putReq = store.put(chat);
-          putReq.onsuccess = () => resolve();
-          putReq.onerror = () => reject(putReq.error);
-      };
+    return new Promise((resolve, reject) => {
+        const getReq = store.get(id);
+        
+        getReq.onsuccess = () => {
+            const existing = getReq.result as StoredChat | undefined;
+            
+            let title = existing?.title;
+            
+            // Generate title if new or if existing title was default/empty and we have user messages now
+            if (!title) {
+               const firstUserMsg = messages.find(m => m.role === 'user');
+               title = firstUserMsg 
+                  ? (firstUserMsg.text.slice(0, 30) + (firstUserMsg.text.length > 30 ? '...' : ''))
+                  : `Conversation ${new Date().toLocaleString()}`;
+            }
+            
+            // We explicitly map the messages to ensure all media fields are preserved.
+            // IndexedDB handles structured cloning, so base64 strings in attachments/video/image are stored correctly.
+            const cleanMessages: ChatMessage[] = messages.map(msg => ({
+                id: msg.id,
+                role: msg.role,
+                text: msg.text,
+                timestamp: msg.timestamp,
+                isFinal: msg.isFinal,
+                // Explicitly preserve media fields to ensure attachments and generations are saved
+                attachments: msg.attachments, // User uploaded images/docs (Base64)
+                image: msg.image,             // AI Generated Image (Base64)
+                video: msg.video,             // AI Generated Video (Base64/URI)
+                groundingMetadata: msg.groundingMetadata
+            }));
       
-      getReq.onerror = () => reject(getReq.error);
-  });
+            const chat: StoredChat = {
+              id,
+              timestamp: Date.now(),
+              title,
+              messages: cleanMessages
+            };
+            
+            const putReq = store.put(chat);
+            putReq.onsuccess = () => resolve();
+            putReq.onerror = (e) => {
+                console.error("Failed to save chat history (likely quota exceeded due to media size):", putReq.error);
+                reject(putReq.error);
+            };
+        };
+        
+        getReq.onerror = () => reject(getReq.error);
+    });
+  } catch (error) {
+    console.error("Database error in saveChat:", error);
+    throw error;
+  }
 };
 
 export const getChats = async (): Promise<StoredChat[]> => {

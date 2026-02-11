@@ -41,6 +41,7 @@ export interface ChatMessage {
   timestamp: number;
   isFinal?: boolean;
   image?: string; // Base64 string for generated images
+  video?: string; // URI or Base64 for generated videos
   attachments?: Attachment[]; // User uploaded attachments
   groundingMetadata?: GroundingMetadata; // For search results
 }
@@ -58,6 +59,9 @@ export interface User {
   status: UserStatus;
   trialEndsAt: number; // Timestamp
   lastLogin?: number;
+  subscriptionType?: 'trial' | 'paid';
+  subscriptionStatus?: 'active' | 'expired';
+  subscriptionStartAt?: number;
 }
 
 export interface AuthState {

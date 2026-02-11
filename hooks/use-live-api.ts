@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { createBlob, decode, decodeAudioData, blobToBase64 } from '../utils/audio-utils';
@@ -8,9 +9,10 @@ interface UseLiveApiProps {
   onTranscript?: (text: string, role: 'user' | 'model', isFinal: boolean) => void;
   voiceName?: VoiceId;
   systemInstruction?: string;
+  model?: string;
 }
 
-export function useLiveApi({ onConnectionChange, onTranscript, voiceName = 'Puck', systemInstruction }: UseLiveApiProps) {
+export function useLiveApi({ onConnectionChange, onTranscript, voiceName = 'Puck', systemInstruction, model = 'gemini-2.5-flash-native-audio-preview-12-2025' }: UseLiveApiProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isError, setIsError] = useState<string | null>(null);
   const [volume, setVolume] = useState(0); // For visualizer
@@ -132,14 +134,27 @@ export function useLiveApi({ onConnectionChange, onTranscript, voiceName = 'Puck
       // Initialize Gemini Client
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
+      // Enforce valid Live API models.
+      // Standard models (gemini-2.5-flash, gemini-3-pro, gpt-4) do NOT support bidiGenerateContent (websocket).
+      // We must switch to the native-audio preview model if an incompatible model is selected.
+      let activeModel = model;
+      const validLiveModels = [
+        'gemini-2.5-flash-native-audio-preview-12-2025'
+      ];
+
+      if (!validLiveModels.includes(activeModel)) {
+         console.warn(`Model ${activeModel} is not supported for Live API. Switching to default Live model.`);
+         activeModel = 'gemini-2.5-flash-native-audio-preview-12-2025';
+      }
+
       const config: any = {
-        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
+        model: activeModel,
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName } },
           },
-          systemInstruction: systemInstruction || "You are Nova, a helpful, witty, and friendly AI assistant. You speak naturally, like a human, with concise responses. You can see what the user shows you via camera if enabled.",
+          systemInstruction: systemInstruction || "You are DasKartAI, a helpful, witty, and friendly AI assistant. You speak naturally, like a human, with concise responses. You can see what the user shows you via camera if enabled.",
           // Fix: Use empty objects to enable transcription, do not pass "model" string
           inputAudioTranscription: {}, 
           outputAudioTranscription: {},
@@ -267,7 +282,7 @@ export function useLiveApi({ onConnectionChange, onTranscript, voiceName = 'Puck
       setIsError(e.message || "Failed to connect");
       cleanup();
     }
-  }, [cleanup, voiceName, systemInstruction]);
+  }, [cleanup, voiceName, systemInstruction, model]);
 
   const sendText = useCallback((text: string) => {
     if (sessionRef.current) {

@@ -23,9 +23,10 @@ export const PricingModal: React.FC<PricingModalProps> = ({ onClose }) => {
     }
   };
 
-  const daysLeft = user?.trialEndsAt 
-    ? Math.ceil((user.trialEndsAt - Date.now()) / (1000 * 60 * 60 * 24)) 
-    : 0;
+  // Calculate hours remaining for the 1-day trial
+  const msLeft = user?.trialEndsAt ? user.trialEndsAt - Date.now() : 0;
+  const hoursLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60)));
+  const isExpired = msLeft <= 0 && user?.plan === 'trial';
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -49,31 +50,31 @@ export const PricingModal: React.FC<PricingModalProps> = ({ onClose }) => {
           
           <div className="mb-6">
             <span className="text-3xl font-bold text-white">Free</span>
-            <span className="text-slate-500 ml-2">/ 7 days</span>
+            <span className="text-slate-500 ml-2">/ 1 Day</span>
           </div>
 
           <p className="text-slate-400 text-sm mb-8 leading-relaxed">
-            Experience the power of DasKartAI. Perfect for testing smart shopping capabilities.
+            Experience the power of DasKartAI for 24 hours. Perfect for testing smart shopping capabilities.
           </p>
 
           <div className="space-y-4 mb-8">
             <Feature text="Basic Voice Conversations" included />
             <Feature text="Standard Response Speed" included />
-            <Feature text="30 mins daily usage limit" included={false} />
+            <Feature text="24-Hour Access Limit" included />
             <Feature text="Smart Deal Finding" included={false} />
             <Feature text="Visual Product Search" included={false} />
           </div>
 
           <div className="mt-auto">
              {user?.plan === 'trial' ? (
-                <div className={`p-4 rounded-xl border ${daysLeft > 0 ? 'bg-blue-900/20 border-blue-800' : 'bg-red-900/20 border-red-800'}`}>
-                    <p className={`font-semibold ${daysLeft > 0 ? 'text-blue-400' : 'text-red-400'}`}>
-                        {daysLeft > 0 ? `${daysLeft} days remaining` : 'Trial Expired'}
+                <div className={`p-4 rounded-xl border ${!isExpired ? 'bg-blue-900/20 border-blue-800' : 'bg-red-900/20 border-red-800'}`}>
+                    <p className={`font-semibold ${!isExpired ? 'text-blue-400' : 'text-red-400'}`}>
+                        {!isExpired ? `${hoursLeft} hours remaining` : 'Trial Expired'}
                     </p>
                 </div>
              ) : (
                 <button className="w-full py-3 rounded-xl border border-slate-700 text-slate-500 font-medium cursor-not-allowed">
-                    Current Plan
+                    Current Plan (Pro)
                 </button>
              )}
           </div>
@@ -115,7 +116,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ onClose }) => {
           <button 
             onClick={handleUpgrade}
             disabled={loading || user?.plan === 'pro'}
-            className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-xl shadow-blue-900/30 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
+            className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-xl shadow-blue-900/30 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? <Loader2 className="animate-spin" /> : <Shield size={20} />}
             {user?.plan === 'pro' ? 'Plan Active' : 'Upgrade to Pro'}

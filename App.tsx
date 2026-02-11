@@ -31,7 +31,7 @@ const ClientApp: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState<VoiceId>('Puck');
   const [systemInstruction, setSystemInstruction] = useState("You are DasKartAI, a warm, engaging, and human-like AI assistant.");
-  const [selectedModel, setSelectedModel] = useState<string>('gemini-3-flash-preview');
+  const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-flash-native-audio-preview-12-2025');
 
   // UI State
   const [showSettings, setShowSettings] = useState(false);
@@ -58,6 +58,18 @@ const ClientApp: React.FC = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
+  // --- Auto-Save Effect ---
+  // Saves chat history whenever a message is finalized (isFinal: true).
+  // This ensures uploads and completed generations are persisted immediately.
+  useEffect(() => {
+    const lastMsg = messages[messages.length - 1];
+    if (messages.length > 0 && lastMsg?.isFinal) {
+      saveChat(currentChatId, messages).catch(err => 
+        console.error("Failed to auto-save chat:", err)
+      );
+    }
+  }, [messages, currentChatId]);
+
   // --- Live API Hook ---
   const handleTranscript = useCallback((text: string, role: 'user' | 'model', isFinal: boolean) => {
     setMessages(prev => {
@@ -77,12 +89,14 @@ const ClientApp: React.FC = () => {
   }, []);
 
   const { connect, disconnect, sendText: sendLiveText, isConnected, isError, outputAnalyser, inputAnalyser, volume } = useLiveApi({
+    model: selectedModel,
     voiceName: selectedVoice,
     systemInstruction,
     onConnectionChange: (connected) => {
       if (!connected) {
         if (isRecordingRef.current) stopRecording();
         setIsCamOn(false); stopCamera(); setShowTranscript(false);
+        // Final save on disconnect to capture any stragglers
         if (messagesRef.current.length > 0) saveChat(currentChatIdRef.current, messagesRef.current).catch(console.error);
       }
     },
@@ -112,39 +126,57 @@ const ClientApp: React.FC = () => {
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', text, attachments, timestamp: Date.now(), isFinal: true };
     setMessages(prev => [...prev, userMsg]);
     
+    // Auto-save effect will handle saving userMsg since isFinal is true.
+
     if (isConnected) {
         sendLiveText(text);
     } else {
-        // --- NEW: Use API Service instead of direct Gemini call ---
+        // --- API Service Mode ---
         try {
              const modelMsgId = crypto.randomUUID();
              setMessages(prev => [...prev, { id: modelMsgId, role: 'model', text: '', timestamp: Date.now(), isFinal: false }]);
 
              // Convert messages to history format for API
-             const history = messages.map(m => ({
-                 role: m.role,
-                 parts: [{ text: m.text }]
-             }));
+             // Ensure robust handling of multimodal history and avoid empty messages
+             const history = messagesRef.current
+                .filter(m => (m.text && m.text.trim() !== '') || (m.attachments && m.attachments.length > 0) || (m.role === 'model' && (m.image || m.video)))
+                .map(m => {
+                 const parts: any[] = [];
+                 if (m.text && m.text.trim() !== '') parts.push({ text: m.text });
+                 
+                 if (m.role === 'user' && m.attachments && m.attachments.length > 0) {
+                     m.attachments.forEach(att => {
+                         parts.push({ inlineData: { mimeType: att.mimeType, data: att.data } });
+                     });
+                 }
+                 
+                 return {
+                     role: m.role,
+                     parts
+                 };
+             })
+             .filter(m => m.parts.length > 0);
 
-             // Call API with selected model
+             // Call API
              const response = await api.sendMessage(text, attachments, history, systemInstruction, selectedModel);
              
-             const finalModelMsg = { 
+             const finalModelMsg: ChatMessage = { 
                  id: modelMsgId, 
-                 role: 'model' as const, 
+                 role: 'model', 
                  text: response.text, 
                  groundingMetadata: response.groundingMetadata,
                  image: response.image,
+                 video: response.video,
                  timestamp: Date.now(), 
                  isFinal: true 
              };
              
              setMessages(prev => prev.map(m => m.id === modelMsgId ? finalModelMsg : m));
-             saveChat(currentChatId, [...messages, userMsg, finalModelMsg]);
+             // Auto-save effect will handle saving finalModelMsg.
 
         } catch (e: any) {
             console.error("Chat Error:", e);
-            const errorMsg = { id: crypto.randomUUID(), role: 'model' as const, text: e.message || "Connection failed.", timestamp: Date.now(), isFinal: true };
+            const errorMsg: ChatMessage = { id: crypto.randomUUID(), role: 'model', text: e.message || "Connection failed.", timestamp: Date.now(), isFinal: true };
             setMessages(prev => [...prev, errorMsg]);
         }
     }
@@ -200,7 +232,17 @@ const ClientApp: React.FC = () => {
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
       {showPricing && <PricingModal onClose={() => setShowPricing(false)} />}
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} selectedVoice={selectedVoice} onVoiceChange={setSelectedVoice} systemInstruction={systemInstruction} onSystemInstructionChange={setSystemInstruction} />}
+      {showSettings && (
+        <SettingsModal 
+          onClose={() => setShowSettings(false)} 
+          selectedVoice={selectedVoice} 
+          onVoiceChange={setSelectedVoice} 
+          systemInstruction={systemInstruction} 
+          onSystemInstructionChange={setSystemInstruction}
+          selectedModel={selectedModel}
+          onModelChange={setSelectedModel}
+        />
+      )}
 
       <Chat 
         messages={messages} onSendMessage={handleSendMessage} onClearChat={handleClearChat} onConnect={handleConnect}

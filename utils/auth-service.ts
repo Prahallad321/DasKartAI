@@ -36,6 +36,8 @@ const seedAdmin = () => {
       plan: 'pro',
       role: 'admin',
       status: 'active',
+      subscriptionType: 'paid',
+      subscriptionStatus: 'active',
       trialEndsAt: Date.now() + 100000000000,
       lastLogin: Date.now()
     };
@@ -64,7 +66,7 @@ try {
 }
 
 export const authService = {
-  async signup(name: string, email: string, password: string): Promise<User> {
+  async signup(name: string, email: string, password: string, subscriptionChoice: 'trial' | 'paid'): Promise<User> {
     await delay(800);
     const users = safeParse(USERS_KEY, {}) as Record<string, any>;
 
@@ -75,19 +77,42 @@ export const authService = {
     }
 
     const id = crypto.randomUUID();
-    // 7 Day Free Trial
-    const trialEndsAt = Date.now() + (7 * 24 * 60 * 60 * 1000); 
+    const now = Date.now();
+    let newUser: User;
 
-    const newUser: User = {
-      id,
-      name,
-      email,
-      plan: 'trial',
-      role: 'user',
-      status: 'active',
-      trialEndsAt,
-      lastLogin: Date.now()
-    };
+    if (subscriptionChoice === 'paid') {
+        // Paid Subscription (Simulated immediate activation)
+        // No trial end date needed, or set far future
+        newUser = {
+          id,
+          name,
+          email,
+          plan: 'pro',
+          role: 'user',
+          status: 'active',
+          subscriptionType: 'paid',
+          subscriptionStatus: 'active',
+          subscriptionStartAt: now,
+          trialEndsAt: now + (365 * 10 * 24 * 60 * 60 * 1000), // Effectively infinite
+          lastLogin: now
+        };
+    } else {
+        // 1 Day Free Trial
+        const trialEndsAt = now + (24 * 60 * 60 * 1000); // 24 Hours
+        newUser = {
+          id,
+          name,
+          email,
+          plan: 'trial',
+          role: 'user',
+          status: 'active',
+          subscriptionType: 'trial',
+          subscriptionStatus: 'active',
+          subscriptionStartAt: now,
+          trialEndsAt,
+          lastLogin: now
+        };
+    }
 
     // Store user + "password" (mock)
     users[id] = { ...newUser, password }; // In real app, hash password!
@@ -109,6 +134,13 @@ export const authService = {
     
     if (userRecord.status === 'banned' || userRecord.status === 'suspended') {
         throw new Error(`Account is ${userRecord.status}. Contact support.`);
+    }
+
+    // Check trial expiry on login
+    if (userRecord.plan === 'trial' && userRecord.trialEndsAt < Date.now()) {
+        userRecord.subscriptionStatus = 'expired';
+        users[userRecord.id] = userRecord;
+        localStorage.setItem(USERS_KEY, JSON.stringify(users));
     }
 
     // Update last login
@@ -137,6 +169,12 @@ export const authService = {
       const { password: _, ...user } = users[id];
       // Check status on session refresh too
       if (user.status === 'banned') return null;
+      
+      // Check trial expiry
+      if (user.plan === 'trial' && user.trialEndsAt < Date.now()) {
+        user.subscriptionStatus = 'expired';
+      }
+
       return user as User;
     }
     return null;
@@ -148,6 +186,8 @@ export const authService = {
 
     if (users[userId]) {
       users[userId].plan = 'pro';
+      users[userId].subscriptionType = 'paid';
+      users[userId].subscriptionStatus = 'active';
       // Pro users effectively have no trial end, or set far future
       users[userId].trialEndsAt = Date.now() + (365 * 10 * 24 * 60 * 60 * 1000); 
       
@@ -176,7 +216,7 @@ export const authService = {
     const updatedUserEntry = { ...users[userId], ...data };
     
     // Clean up empty fields if passed
-    if (!data.password) delete (updatedUserEntry as any).password; // Don't overwrite if empty, though logic above handles spread
+    if (!data.password) delete (updatedUserEntry as any).password; 
     else updatedUserEntry.password = data.password;
 
     users[userId] = updatedUserEntry;

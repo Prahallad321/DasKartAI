@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Mail, Lock, User, ArrowRight, Loader2, ShoppingCart } from 'lucide-react';
+import { X, Mail, Lock, User, ArrowRight, Loader2, ShoppingCart, Check, Star, Zap } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from './Logo';
 
@@ -13,6 +13,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Subscription choice state
+  const [subChoice, setSubChoice] = useState<'trial' | 'paid'>('trial');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -29,7 +32,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
       if (isLogin) {
         await login(formData.email, formData.password);
       } else {
-        await signup(formData.name, formData.email, formData.password);
+        await signup(formData.name, formData.email, formData.password, subChoice);
       }
       onClose();
     } catch (err: any) {
@@ -62,7 +65,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
         </div>
 
         <div className="p-8">
-          <div className="flex gap-6 mb-8 border-b border-slate-700">
+          <div className="flex gap-6 mb-6 border-b border-slate-700">
             <button 
               onClick={() => setIsLogin(true)}
               className={`pb-2 text-sm font-medium transition-colors relative ${isLogin ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
@@ -133,6 +136,48 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
               </div>
             </div>
 
+            {/* Subscription Selection for Signup */}
+            {!isLogin && (
+                <div className="space-y-3 pt-2">
+                    <label className="text-xs text-slate-400 font-medium ml-1">Select Subscription Plan</label>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setSubChoice('trial')}
+                            className={`relative p-3 rounded-xl border text-left transition-all ${
+                                subChoice === 'trial' 
+                                ? 'bg-blue-600/10 border-blue-500' 
+                                : 'bg-slate-800 border-slate-700 hover:border-slate-600'
+                            }`}
+                        >
+                            <div className="flex items-center gap-2 mb-1">
+                                <Zap size={16} className={subChoice === 'trial' ? 'text-blue-400' : 'text-slate-400'} />
+                                <span className={`text-sm font-bold ${subChoice === 'trial' ? 'text-blue-400' : 'text-slate-300'}`}>Free Trial</span>
+                            </div>
+                            <div className="text-[10px] text-slate-400">1 Day Access</div>
+                            {subChoice === 'trial' && <div className="absolute top-2 right-2"><Check size={14} className="text-blue-500" /></div>}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setSubChoice('paid')}
+                            className={`relative p-3 rounded-xl border text-left transition-all ${
+                                subChoice === 'paid' 
+                                ? 'bg-orange-600/10 border-orange-500' 
+                                : 'bg-slate-800 border-slate-700 hover:border-slate-600'
+                            }`}
+                        >
+                             <div className="flex items-center gap-2 mb-1">
+                                <Star size={16} className={subChoice === 'paid' ? 'text-orange-400' : 'text-slate-400'} />
+                                <span className={`text-sm font-bold ${subChoice === 'paid' ? 'text-orange-400' : 'text-slate-300'}`}>Pro</span>
+                            </div>
+                            <div className="text-[10px] text-slate-400">$19/mo (Instant)</div>
+                            {subChoice === 'paid' && <div className="absolute top-2 right-2"><Check size={14} className="text-orange-500" /></div>}
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <button
               type="submit"
               disabled={loading}
@@ -142,7 +187,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                 <Loader2 className="animate-spin" size={20} />
               ) : (
                 <>
-                  {isLogin ? 'Sign In' : 'Get Started'}
+                  {isLogin ? 'Sign In' : (subChoice === 'paid' ? 'Pay & Subscribe' : 'Start Free Trial')}
                   <ArrowRight size={18} />
                 </>
               )}

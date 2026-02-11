@@ -4,13 +4,14 @@ import {
   Send, X, MessageSquare, User, Sparkles, History, Menu, Trash2, Download, Copy, Edit, 
   MoreHorizontal, Headphones, Settings, Image as ImageIcon, PanelLeftClose, PanelLeft, 
   Search, Plus, Globe, ExternalLink, ChevronDown, Mic, AudioLines, FolderPlus, MonitorPlay,
-  ChevronUp, LogIn, Loader2, Volume2, MicOff, FileText, Camera, LayoutGrid, Zap, Play, Square, Video
+  ChevronUp, LogIn, Loader2, Volume2, MicOff, FileText, Camera, LayoutGrid, Zap, Play, Square, Video, Check
 } from 'lucide-react';
 import { ChatMessage, User as UserType, Attachment } from '../types';
 import { getChats, deleteChat, clearAllChats, StoredChat } from '../utils/chat-storage';
 import { UserMenu } from './UserMenu';
 import { Logo } from './Logo';
 import { VideoRecorder } from './VideoRecorder';
+import { api } from '../services/api'; // Import API service
 
 interface ChatProps {
   messages: ChatMessage[];
@@ -27,6 +28,36 @@ interface ChatProps {
   selectedModel: string;
   onModelChange: (model: string) => void;
 }
+
+// Full Model List Definition
+const ALL_MODELS = [
+  { category: 'Gemini (Google)', items: [
+      { id: 'gemini-2.5-flash-native-audio-preview-12-2025', label: 'Gemini 2.5 Flash Live', desc: 'Optimized for Real-time Audio/Video' },
+      { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', desc: 'Text-out model' },
+      { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', desc: 'Text-out model' },
+      { id: 'gemini-2.0-flash', label: 'Gemini 2 Flash', desc: 'Text-out model' },
+      { id: 'gemini-2.0-flash-exp', label: 'Gemini 2 Flash Exp', desc: 'Experimental model' },
+      { id: 'gemini-2.0-flash-lite', label: 'Gemini 2 Flash Lite', desc: 'Lightweight model' },
+      { id: 'gemini-2.5-flash-tts', label: 'Gemini 2.5 Flash TTS', desc: 'Multi-modal generative' },
+      { id: 'gemini-2.5-pro-tts', label: 'Gemini 2.5 Pro TTS', desc: 'Multi-modal generative' },
+      { id: 'gemma-3-1b', label: 'Gemma 3 1B', desc: 'Open model' },
+      { id: 'gemma-3-4b', label: 'Gemma 3 4B', desc: 'Open model' }
+  ]},
+  { category: 'OpenAI (Frontier)', items: [
+      { id: 'gpt-5.2', label: 'GPT-5.2', desc: 'Best for coding & agentic tasks' },
+      { id: 'gpt-5-mini', label: 'GPT-5 mini', desc: 'Faster, cost-efficient version' },
+      { id: 'gpt-5-nano', label: 'GPT-5 nano', desc: 'Fastest, most cost-efficient' },
+      { id: 'gpt-5.2-pro', label: 'GPT-5.2 pro', desc: 'Smarter, precise responses' },
+      { id: 'gpt-5', label: 'GPT-5', desc: 'Intelligent reasoning model' },
+      { id: 'gpt-4.1', label: 'GPT-4.1', desc: 'Smartest non-reasoning model' },
+      { id: 'gpt-4o', label: 'GPT-4o', desc: 'Omni model' }
+  ]},
+  { category: 'Visual & Video (Google)', items: [
+      { id: 'gemini-3-pro-image-preview', label: 'Gemini 3 Pro Image', desc: 'Nano Banana Pro - High Fidelity' },
+      { id: 'veo-3.1-generate-preview', label: 'Veo 3 Generate', desc: 'High Quality Video Generation' },
+      { id: 'veo-3.1-fast-generate-preview', label: 'Veo 3 Fast Generate', desc: 'Low Latency Video Generation' }
+  ]}
+];
 
 // Helper: Text Highlighter
 const Highlighter: React.FC<{ text: string, highlight: string }> = ({ text, highlight }) => {
@@ -149,6 +180,12 @@ const MessageBubble: React.FC<{ msg: ChatMessage, highlight?: string, domRef?: R
                     </div>
                   </div>
                 )}
+                {/* Generated Video Display */}
+                {msg.video && (
+                  <div className="relative mt-2 max-w-sm rounded-lg overflow-hidden border border-slate-700 group/video shadow-lg">
+                    <video controls src={`data:video/mp4;base64,${msg.video}`} className="w-full h-auto" />
+                  </div>
+                )}
                 {msg.groundingMetadata && <GroundingSources metadata={msg.groundingMetadata} />}
             </div>
         </div>
@@ -168,7 +205,18 @@ export const Chat: React.FC<ChatProps> = ({
   const [sidebarSearch, setSidebarSearch] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showModelSelector, setShowModelSelector] = useState(false);
   
+  // Sidebar Resize State
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('nova_sidebar_width');
+      return saved ? parseInt(saved) : 280;
+    }
+    return 280;
+  });
+  const [isResizing, setIsResizing] = useState(false);
+
   // Audio Conversion Tool State
   const [voiceState, setVoiceState] = useState<'idle' | 'listening' | 'processing' | 'speaking'>('idle');
   const recognitionRef = useRef<any>(null);
@@ -179,12 +227,18 @@ export const Chat: React.FC<ChatProps> = ({
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   
+  // Transcription state
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const transcriptionRecorderRef = useRef<MediaRecorder | null>(null);
+  const transcriptionChunksRef = useRef<Blob[]>([]);
+
   const imageInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const modelSelectorRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
 
   // Sync ref with state for event listeners
@@ -197,6 +251,49 @@ export const Chat: React.FC<ChatProps> = ({
   useEffect(() => {
     if (window.innerWidth >= 768) setShowSidebar(true);
   }, []);
+
+  // Close model selector on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modelSelectorRef.current && !modelSelectorRef.current.contains(event.target as Node)) {
+        setShowModelSelector(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Sidebar Resize Logic
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      e.preventDefault();
+      // Constraints: Min 240px, Max 600px or 50% of viewport
+      const newWidth = Math.max(240, Math.min(e.clientX, 600, window.innerWidth * 0.5));
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      if (isResizing) {
+        setIsResizing(false);
+        localStorage.setItem('nova_sidebar_width', sidebarWidth.toString());
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    };
+
+    if (isResizing) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, sidebarWidth]);
 
   useEffect(() => {
     const loadVoices = () => {
@@ -232,7 +329,7 @@ export const Chat: React.FC<ChatProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Audio Logic: Internal Conversion (Voice -> Text)
+  // Audio Logic: Internal Conversion (Voice -> Text) - Uses Web Speech API (Fast streaming)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const win = window as any;
@@ -280,16 +377,30 @@ export const Chat: React.FC<ChatProps> = ({
     };
   }, []); // Empty dependency array ensures stable instance
 
-  const speak = (text: string) => {
+  // Updated speak function to use API for TTS
+  const speak = async (text: string) => {
     if (!text) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    const preferredVoice = voices.find(v => v.name.includes('Google US English')) || voices.find(v => v.lang.startsWith('en')) || voices[0];
-    if (preferredVoice) utterance.voice = preferredVoice;
-    
-    utterance.onstart = () => setVoiceState('speaking');
-    utterance.onend = () => setVoiceState('idle');
-    setTimeout(() => window.speechSynthesis.speak(utterance), 10);
+    setVoiceState('speaking');
+    try {
+       const audioBase64 = await api.generateSpeech(text);
+       if (!audioBase64) throw new Error("No audio generated");
+
+       const audioBytes = Uint8Array.from(atob(audioBase64), c => c.charCodeAt(0));
+       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+       const audioBuffer = await audioContext.decodeAudioData(audioBytes.buffer);
+       const source = audioContext.createBufferSource();
+       source.buffer = audioBuffer;
+       source.connect(audioContext.destination);
+       source.onended = () => setVoiceState('idle');
+       source.start();
+    } catch (e) {
+       console.error("TTS Error", e);
+       // Fallback
+       window.speechSynthesis.cancel();
+       const utterance = new SpeechSynthesisUtterance(text);
+       utterance.onend = () => setVoiceState('idle');
+       window.speechSynthesis.speak(utterance);
+    }
   };
 
   // Auto-play AI response only if user initiated via voice (state is processing)
@@ -315,6 +426,52 @@ export const Chat: React.FC<ChatProps> = ({
         // Allow cancelling the wait
         setVoiceState('idle');
     }
+  };
+
+  // Transcription using Gemini
+  const toggleTranscription = async () => {
+     if (isTranscribing) {
+         // Stop
+         transcriptionRecorderRef.current?.stop();
+         setIsTranscribing(false);
+     } else {
+         // Start
+         try {
+             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+             const recorder = new MediaRecorder(stream);
+             transcriptionChunksRef.current = [];
+             
+             recorder.ondataavailable = (e) => transcriptionChunksRef.current.push(e.data);
+             recorder.onstop = async () => {
+                 const blob = new Blob(transcriptionChunksRef.current, { type: 'audio/wav' });
+                 
+                 // Convert to base64
+                 const reader = new FileReader();
+                 reader.onloadend = async () => {
+                     const base64Audio = (reader.result as string).split(',')[1];
+                     try {
+                         setInputValue("Transcribing audio...");
+                         const text = await api.transcribeAudio(base64Audio);
+                         setInputValue(text);
+                     } catch (e) {
+                         console.error("Transcription Error", e);
+                         setInputValue("Error transcribing audio.");
+                     }
+                 };
+                 reader.readAsDataURL(blob);
+                 
+                 // Stop tracks
+                 stream.getTracks().forEach(t => t.stop());
+             };
+             
+             transcriptionRecorderRef.current = recorder;
+             recorder.start();
+             setIsTranscribing(true);
+             setShowAttachMenu(false); // Close menu
+         } catch (e) {
+             console.error("Mic access denied", e);
+         }
+     }
   };
 
   const loadHistory = async () => { setHistory(await getChats()); };
@@ -382,6 +539,19 @@ export const Chat: React.FC<ChatProps> = ({
     'text-slate-400 hover:bg-slate-800'
   }`;
 
+  // Helper to format model name for display
+  const getModelDisplayName = (id: string) => {
+      if (id.includes('gpt')) {
+          return id.toUpperCase().replace('-', ' ');
+      }
+      // Special case for the Live model which has a long ID
+      if (id.includes('native-audio')) return 'Gemini Live';
+      
+      const parts = id.split('-');
+      // Capitalize first letter of each part
+      return parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ').replace('Preview', '').trim();
+  };
+
   return (
     <div className="flex h-screen bg-slate-950 text-slate-50 font-sans overflow-hidden">
       <input type="file" ref={imageInputRef} className="hidden" accept="image/*" multiple onChange={handleFileSelect} />
@@ -390,7 +560,10 @@ export const Chat: React.FC<ChatProps> = ({
       {showVideoRecorder && <VideoRecorder onClose={() => setShowVideoRecorder(false)} onSave={handleVideoSave} />}
 
       {/* --- SIDEBAR --- */}
-      <div className={`fixed inset-y-0 left-0 z-40 w-[280px] bg-slate-900 border-r border-slate-800 transform transition-transform duration-300 md:relative md:translate-x-0 flex flex-col ${showSidebar ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div 
+        style={{ '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties}
+        className={`fixed inset-y-0 left-0 z-40 w-[280px] md:w-[var(--sidebar-width)] flex-shrink-0 bg-slate-900 border-r border-slate-800 transform transition-transform duration-300 md:relative md:translate-x-0 flex flex-col ${showSidebar ? 'translate-x-0' : '-translate-x-full'}`}
+      >
         <div className="p-4 pb-2">
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
@@ -427,6 +600,12 @@ export const Chat: React.FC<ChatProps> = ({
                 </button>
              )}
         </div>
+
+        {/* Resize Handle - Desktop Only */}
+        <div
+          className="hidden md:block absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-500 transition-colors z-50 opacity-0 hover:opacity-100 active:opacity-100 active:bg-blue-600"
+          onMouseDown={() => setIsResizing(true)}
+        />
       </div>
       {showSidebar && <div className="fixed inset-0 bg-black/60 z-30 md:hidden backdrop-blur-sm" onClick={() => setShowSidebar(false)} />}
 
@@ -489,8 +668,8 @@ export const Chat: React.FC<ChatProps> = ({
       {showRightSidebar && <div className="fixed inset-0 bg-black/40 z-40 backdrop-blur-[1px]" onClick={() => setShowRightSidebar(false)} />}
 
       {/* --- MAIN AREA --- */}
-      <div className="flex-1 flex flex-col h-full relative min-w-0 bg-slate-950">
-        <div className="absolute top-0 w-full flex items-center justify-between p-4 z-20 bg-gradient-to-b from-slate-950 via-slate-950/90 to-transparent">
+      <div className="flex-1 flex flex-col h-full relative min-w-0 bg-slate-900">
+        <div className="absolute top-0 w-full flex items-center justify-between p-4 z-20 bg-gradient-to-b from-slate-900 via-slate-900/90 to-transparent">
             {/* Left Side: Menu + Branding + Model Selector */}
             <div className="flex items-center gap-4">
                 {/* Mobile Menu Toggle */}
@@ -508,43 +687,56 @@ export const Chat: React.FC<ChatProps> = ({
                     <div className="h-4 w-px bg-slate-700 mx-1 hidden sm:block"></div>
                     
                     {/* Model Dropdown */}
-                    <div className="relative group z-30">
-                        <button className="flex items-center gap-2 text-xs font-medium text-slate-300 hover:text-white transition-colors py-1">
-                            {selectedModel.includes('gpt') ? (
-                                <><Zap size={14} className="text-green-400" /> GPT-4o</>
+                    <div className="relative z-30" ref={modelSelectorRef}>
+                        <button 
+                            onClick={() => setShowModelSelector(!showModelSelector)}
+                            className="flex items-center gap-2 text-xs font-medium text-slate-300 hover:text-white transition-colors py-1 px-2 rounded hover:bg-white/5"
+                        >
+                            {selectedModel.toLowerCase().includes('gpt') ? (
+                                <><Zap size={14} className="text-green-400" /> {getModelDisplayName(selectedModel)}</>
                             ) : (
-                                <><Sparkles size={14} className="text-blue-400" /> Gemini 2.5</>
+                                <><Sparkles size={14} className="text-blue-400" /> {getModelDisplayName(selectedModel)}</>
                             )}
-                            <ChevronDown size={12} className="opacity-50" />
+                            <ChevronDown size={12} className={`opacity-50 transition-transform ${showModelSelector ? 'rotate-180' : ''}`} />
                         </button>
                         
                         {/* Dropdown Menu */}
-                         <div className="absolute top-full left-0 mt-3 w-48 bg-slate-900 border border-slate-700 rounded-xl shadow-xl overflow-hidden hidden group-hover:block animate-in fade-in slide-in-from-top-2 duration-200">
-                            <div className="p-1">
-                                <button onClick={() => onModelChange('gemini-3-flash-preview')} className={`w-full text-left px-3 py-2.5 text-xs hover:bg-slate-800 rounded-lg flex items-center gap-3 transition-colors ${selectedModel === 'gemini-3-flash-preview' ? 'text-white bg-slate-800' : 'text-slate-300'}`}>
-                                    <Sparkles size={14} className="text-blue-400" /> 
-                                    <div>
-                                        <div className="font-semibold">Gemini 3 Flash</div>
-                                        <div className="text-[10px] text-slate-500">Fast & Efficient</div>
-                                    </div>
-                                </button>
-                                <button onClick={() => onModelChange('gemini-3-pro-preview')} className={`w-full text-left px-3 py-2.5 text-xs hover:bg-slate-800 rounded-lg flex items-center gap-3 transition-colors ${selectedModel === 'gemini-3-pro-preview' ? 'text-white bg-slate-800' : 'text-slate-300'}`}>
-                                    <Sparkles size={14} className="text-purple-400" /> 
-                                    <div>
-                                        <div className="font-semibold">Gemini 3 Pro</div>
-                                        <div className="text-[10px] text-slate-500">Complex Reasoning</div>
-                                    </div>
-                                </button>
-                                <div className="h-px bg-slate-800 my-1"></div>
-                                <button onClick={() => onModelChange('gpt-4o')} className={`w-full text-left px-3 py-2.5 text-xs hover:bg-slate-800 rounded-lg flex items-center gap-3 transition-colors ${selectedModel === 'gpt-4o' ? 'text-white bg-slate-800' : 'text-slate-300'}`}>
-                                    <Zap size={14} className="text-green-400" /> 
-                                    <div>
-                                        <div className="font-semibold">GPT-4o</div>
-                                        <div className="text-[10px] text-slate-500">OpenAI Model</div>
-                                    </div>
-                                </button>
-                            </div>
-                         </div>
+                         {showModelSelector && (
+                             <div className="absolute top-full left-0 mt-3 w-80 max-h-[80vh] overflow-y-auto bg-slate-900 border border-slate-700 rounded-xl shadow-2xl animate-in fade-in slide-in-from-top-2 duration-200 custom-scrollbar">
+                                <div className="p-2 space-y-3">
+                                    {ALL_MODELS.map(category => (
+                                        <div key={category.category}>
+                                            <div className="px-2 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10">
+                                                {category.category}
+                                            </div>
+                                            <div className="space-y-1">
+                                                {category.items.map(model => (
+                                                    <button
+                                                        key={model.id}
+                                                        onClick={() => {
+                                                            onModelChange(model.id);
+                                                            setShowModelSelector(false);
+                                                        }}
+                                                        className={`w-full text-left px-3 py-2 rounded-lg flex flex-col gap-0.5 transition-colors ${
+                                                            selectedModel === model.id 
+                                                                ? 'bg-blue-600/10 text-blue-400' 
+                                                                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            {model.id.includes('gpt') ? <Zap size={14} className={selectedModel === model.id ? 'text-blue-400' : 'text-slate-500'} /> : model.id.includes('veo') ? <Video size={14} className={selectedModel === model.id ? 'text-blue-400' : 'text-slate-500'} /> : <Sparkles size={14} className={selectedModel === model.id ? 'text-blue-400' : 'text-slate-500'} />}
+                                                            <span className="font-medium text-xs">{model.label}</span>
+                                                            {selectedModel === model.id && <Check size={14} className="ml-auto" />}
+                                                        </div>
+                                                        <span className="text-[10px] opacity-60 truncate">{model.desc}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                             </div>
+                         )}
                     </div>
                 </div>
             </div>
@@ -595,11 +787,16 @@ export const Chat: React.FC<ChatProps> = ({
                                     <button onClick={() => setShowVideoRecorder(true)} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-700 text-left text-sm text-slate-200"><Video size={18} className="text-red-400" />Record Video</button>
                                     <button onClick={() => imageInputRef.current?.click()} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-700 text-left text-sm text-slate-200"><ImageIcon size={18} className="text-green-400" />Upload Image</button>
                                     <button onClick={() => docInputRef.current?.click()} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-700 text-left text-sm text-slate-200"><FileText size={18} className="text-orange-400" />Upload Document</button>
+                                    <div className="h-px bg-slate-700 mx-2 my-1"></div>
+                                    <button onClick={toggleTranscription} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-700 text-left text-sm text-slate-200">
+                                      {isTranscribing ? <Square size={18} className="text-red-400 animate-pulse" /> : <Mic size={18} className="text-blue-400" />}
+                                      {isTranscribing ? 'Stop Recording' : 'Voice Note (Transcribe)'}
+                                    </button>
                                 </div>
                             )}
                             <div className="flex items-end p-2 gap-2">
                                 <button onClick={() => setShowAttachMenu(!showAttachMenu)} className={`p-3 rounded-full transition-colors ${showAttachMenu ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><Plus size={24} className={showAttachMenu ? 'rotate-45' : ''} /></button>
-                                <textarea ref={inputRef} value={inputValue} onChange={(e) => { setInputValue(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`; }} onKeyDown={handleKeyDown} placeholder="Ask anything" rows={1} className="flex-1 bg-transparent border-none text-white focus:ring-0 resize-none py-3.5 px-0 max-h-[200px] text-base" style={{ minHeight: '24px' }}/>
+                                <textarea ref={inputRef} value={inputValue} onChange={(e) => { setInputValue(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`; }} onKeyDown={handleKeyDown} placeholder={isTranscribing ? "Recording..." : "Message DasKartAI..."} rows={1} className="flex-1 bg-transparent border-none text-white focus:ring-0 resize-none py-3.5 px-0 max-h-[200px] text-base" style={{ minHeight: '24px' }}/>
                                 <div className="flex items-center gap-1">
                                     {/* Audio Conversion Tool (Right Side) */}
                                     <button onClick={toggleVoiceMode} className={micButtonClasses} title="Audio Conversion Tool">
@@ -652,6 +849,11 @@ export const Chat: React.FC<ChatProps> = ({
                                 <button onClick={() => setShowVideoRecorder(true)} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-700 text-left text-sm text-slate-200"><Video size={18} className="text-red-400" />Record Video</button>
                                 <button onClick={() => imageInputRef.current?.click()} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-700 text-left text-sm text-slate-200"><ImageIcon size={18} className="text-green-400" />Upload Image</button>
                                 <button onClick={() => docInputRef.current?.click()} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-700 text-left text-sm text-slate-200"><FileText size={18} className="text-orange-400" />Upload Document</button>
+                                <div className="h-px bg-slate-700 mx-2 my-1"></div>
+                                <button onClick={toggleTranscription} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-700 text-left text-sm text-slate-200">
+                                  {isTranscribing ? <Square size={18} className="text-red-400 animate-pulse" /> : <Mic size={18} className="text-blue-400" />}
+                                  {isTranscribing ? 'Stop Recording' : 'Voice Note (Transcribe)'}
+                                </button>
                             </div>
                         )}
                         {attachments.length > 0 && (
@@ -659,7 +861,7 @@ export const Chat: React.FC<ChatProps> = ({
                         )}
                         <div className="flex items-end p-2 gap-2">
                             <button onClick={() => setShowAttachMenu(!showAttachMenu)} className={`p-3 rounded-full transition-colors ${showAttachMenu ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><Plus size={24} className={showAttachMenu ? 'rotate-45' : ''} /></button>
-                            <textarea ref={inputRef} value={inputValue} onChange={(e) => { setInputValue(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`; }} onKeyDown={handleKeyDown} placeholder="Message DasKartAI..." rows={1} className="flex-1 bg-transparent border-none text-white focus:ring-0 resize-none py-3.5 px-0 max-h-[200px] text-base" style={{ minHeight: '24px' }}/>
+                            <textarea ref={inputRef} value={inputValue} onChange={(e) => { setInputValue(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`; }} onKeyDown={handleKeyDown} placeholder={isTranscribing ? "Recording..." : "Message DasKartAI..."} rows={1} className="flex-1 bg-transparent border-none text-white focus:ring-0 resize-none py-3.5 px-0 max-h-[200px] text-base" style={{ minHeight: '24px' }}/>
                             <div className="flex items-center gap-1">
                                 {/* Audio Conversion Tool (Right Side) */}
                                 <button onClick={toggleVoiceMode} className={micButtonClasses} title="Audio Conversion Tool">

@@ -7,7 +7,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, pass: string) => Promise<void>;
-  signup: (name: string, email: string, pass: string) => Promise<void>;
+  signup: (name: string, email: string, pass: string, plan: 'trial' | 'paid') => Promise<void>;
   logout: () => Promise<void>;
   upgradeSubscription: () => Promise<void>;
   updateProfile: (data: { name?: string; email?: string; password?: string }) => Promise<void>;
@@ -40,8 +40,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(user);
   };
 
-  const signup = async (name: string, email: string, pass: string) => {
-    const user = await authService.signup(name, email, pass);
+  const signup = async (name: string, email: string, pass: string, plan: 'trial' | 'paid') => {
+    const user = await authService.signup(name, email, pass, plan);
     setUser(user);
   };
 
@@ -62,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(updatedUser);
   };
 
-  const isTrialExpired = user?.plan === 'trial' && Date.now() > user.trialEndsAt;
+  const isTrialExpired = !!(user?.plan === 'trial' && (user.subscriptionStatus === 'expired' || Date.now() > user.trialEndsAt));
 
   return (
     <AuthContext.Provider value={{ 
