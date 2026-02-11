@@ -1,6 +1,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, X, MessageSquare, User, Sparkles, History, Menu, Trash2, Download, Copy, Edit, MoreHorizontal, Headphones, Settings, Image as ImageIcon, PanelLeftClose, PanelLeft, ShoppingCart, Globe, ExternalLink, Plus } from 'lucide-react';
+import { 
+  Send, X, MessageSquare, User, Sparkles, History, Menu, Trash2, Download, Copy, Edit, 
+  MoreHorizontal, Headphones, Settings, Image as ImageIcon, PanelLeftClose, PanelLeft, 
+  Search, Plus, Globe, ExternalLink, ChevronDown, Mic, AudioLines, FolderPlus, MonitorPlay
+} from 'lucide-react';
 import { ChatMessage, User as UserType } from '../types';
 import { getChats, deleteChat, clearAllChats, StoredChat } from '../utils/chat-storage';
 import { UserMenu } from './UserMenu';
@@ -10,7 +14,7 @@ interface ChatProps {
   messages: ChatMessage[];
   onSendMessage: (text: string) => void;
   onClearChat: () => void;
-  onConnect: () => void; // Trigger Voice Mode
+  onConnect: () => void;
   user: UserType | null;
   onOpenSettings: () => void;
   onOpenProfile: () => void;
@@ -18,10 +22,7 @@ interface ChatProps {
   onOpenGallery: () => void;
 }
 
-interface MessageBubbleProps { 
-  msg: ChatMessage;
-}
-
+// Helper: Code Block & Text Formatting
 const FormattedText: React.FC<{ text: string }> = ({ text }) => {
   const parts = text.split(/(```[\s\S]*?```)/g);
   return (
@@ -52,7 +53,7 @@ const FormattedText: React.FC<{ text: string }> = ({ text }) => {
   );
 };
 
-// Component to display search result previews
+// Helper: Grounding Sources (Search Results)
 const GroundingSources: React.FC<{ metadata: any }> = ({ metadata }) => {
   if (!metadata || !metadata.groundingChunks || !Array.isArray(metadata.groundingChunks)) return null;
 
@@ -95,7 +96,8 @@ const GroundingSources: React.FC<{ metadata: any }> = ({ metadata }) => {
   );
 };
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ msg }) => {
+// Helper: Message Bubble
+const MessageBubble: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
   const isUser = msg.role === 'user';
   
   const handleDownloadImage = (e: React.MouseEvent) => {
@@ -111,19 +113,17 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ msg }) => {
   };
 
   return (
-      <div className={`w-full text-gray-100 border-b border-black/10 dark:border-gray-900/50 ${!isUser ? 'bg-[#444654]' : 'bg-[#343541]'}`}>
+      <div className={`w-full text-gray-100 ${!isUser ? 'bg-[#2F2F2F]' : 'bg-transparent'}`}>
         <div className="text-base gap-4 md:gap-6 md:max-w-3xl lg:max-w-[40rem] xl:max-w-[48rem] p-4 md:py-6 flex lg:px-0 m-auto">
             <div className="flex-shrink-0 flex flex-col relative items-end">
                 <div className={`w-8 h-8 rounded-sm flex items-center justify-center ${
-                    isUser 
-                        ? 'bg-[#5436DA]' 
-                        : 'bg-[#19C37D]' 
+                    isUser ? 'bg-[#5436DA]' : 'bg-[#19C37D]' 
                 }`}>
                     {isUser ? <User size={18} className="text-white" /> : <Logo className="w-5 h-5" disableText />}
                 </div>
             </div>
             <div className="relative flex-1 overflow-hidden space-y-2">
-                {/* No Name Label in ChatGPT UI */}
+                <div className="font-semibold text-sm opacity-90 mb-1">{isUser ? 'You' : 'DasKartAI'}</div>
                 {msg.text && <FormattedText text={msg.text} />}
                 
                 {msg.image && (
@@ -144,24 +144,14 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ msg }) => {
                     </div>
                   </div>
                 )}
-                
-                {/* Search Sources Preview */}
-                {msg.groundingMetadata && (
-                   <GroundingSources metadata={msg.groundingMetadata} />
-                )}
+                {msg.groundingMetadata && <GroundingSources metadata={msg.groundingMetadata} />}
             </div>
         </div>
       </div>
   );
 };
 
-const SUGGESTIONS = [
-  { text: "Find the best deals on headphones" },
-  { text: "Draw a futuristic shopping cart" },
-  { text: "Gift ideas for a tech lover" },
-  { text: "Search for latest tech news" },
-];
-
+// --- MAIN CHAT COMPONENT ---
 export const Chat: React.FC<ChatProps> = ({ 
     messages, 
     onSendMessage, 
@@ -179,27 +169,14 @@ export const Chat: React.FC<ChatProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
-    loadHistory();
-  }, [messages]); 
+  useEffect(() => { loadHistory(); }, [messages]); 
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-  useEffect(() => {
-    if (messages.length > 0) {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages]);
-
-  const loadHistory = async () => {
-    const chats = await getChats();
-    setHistory(chats);
-  };
+  const loadHistory = async () => { setHistory(await getChats()); };
 
   const handleDeleteHistory = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (confirm('Delete this chat?')) {
-        await deleteChat(id);
-        loadHistory();
-    }
+    if (confirm('Delete this chat?')) { await deleteChat(id); loadHistory(); }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -213,140 +190,197 @@ export const Chat: React.FC<ChatProps> = ({
     }
   };
 
+  const isEmptyState = messages.length === 0;
+
   return (
-    <div className="flex h-screen bg-[#343541] text-gray-100 font-sans overflow-hidden">
+    <div className="flex h-screen bg-[#212121] text-gray-100 font-sans overflow-hidden">
       
-      {/* Sidebar - ChatGPT Style (#202123) */}
+      {/* --- SIDEBAR --- */}
       <div className={`
-        fixed inset-y-0 left-0 z-40 w-[260px] bg-[#202123] transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 flex flex-col
+        fixed inset-y-0 left-0 z-40 w-[260px] bg-[#171717] transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 flex flex-col
         ${showSidebar ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        {/* New Chat Button */}
-        <div className="p-2 flex-shrink-0">
+        {/* Header Actions */}
+        <div className="p-3 space-y-2">
             <button 
                 onClick={onClearChat}
-                className="flex items-center gap-3 px-3 py-3 w-full text-sm text-white bg-transparent hover:bg-[#2A2B32] border border-white/20 rounded-md transition-colors text-left"
+                className="flex items-center gap-2 px-3 py-2 w-full text-sm text-white hover:bg-[#212121] rounded-lg transition-colors text-left group"
             >
-                <Plus size={16} />
+                <div className="bg-white p-1 rounded-sm group-hover:bg-gray-200">
+                    <Logo className="w-4 h-4" disableText />
+                </div>
                 <span>New chat</span>
+                <span className="ml-auto opacity-70"><Edit size={16} /></span>
+            </button>
+            
+            <button className="flex items-center gap-3 px-3 py-2 w-full text-sm text-gray-300 hover:bg-[#212121] rounded-lg transition-colors text-left">
+                <Search size={16} />
+                <span>Search chats</span>
             </button>
         </div>
 
+        {/* Action Links */}
+        <div className="px-3 pb-2 space-y-1">
+             <button onClick={onOpenGallery} className="flex items-center gap-3 px-3 py-2 w-full text-sm text-gray-300 hover:bg-[#212121] rounded-lg transition-colors text-left">
+                <ImageIcon size={16} />
+                <span>Images</span>
+             </button>
+             <button onClick={onClearChat} className="flex items-center gap-3 px-3 py-2 w-full text-sm text-gray-300 hover:bg-[#212121] rounded-lg transition-colors text-left">
+                <FolderPlus size={16} />
+                <span>New project</span>
+             </button>
+             <button className="flex items-center gap-3 px-3 py-2 w-full text-sm text-gray-300 hover:bg-[#212121] rounded-lg transition-colors text-left">
+                <MonitorPlay size={16} />
+                <span>Online</span>
+             </button>
+        </div>
+
         {/* History List */}
-        <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1 scrollbar-thin scrollbar-thumb-gray-600">
-            {history.length > 0 && <div className="text-xs font-semibold text-gray-500 px-3 py-2">Today</div>}
+        <div className="flex-1 overflow-y-auto px-2 space-y-1 scrollbar-thin scrollbar-thumb-gray-700">
+            {history.length > 0 && <div className="text-xs font-semibold text-gray-500 px-3 py-2 mt-2">Your chats</div>}
             {history.map(chat => (
-                <div key={chat.id} className="group flex items-center gap-3 px-3 py-3 text-sm text-gray-100 hover:bg-[#2A2B32] rounded-md cursor-pointer transition-colors relative overflow-hidden">
-                    <MessageSquare size={16} className="flex-shrink-0 text-gray-400" />
-                    <span className="truncate flex-1 pr-6">{chat.title}</span>
+                <div key={chat.id} className="group flex items-center gap-3 px-3 py-2 text-sm text-gray-300 hover:bg-[#212121] rounded-lg cursor-pointer transition-colors relative overflow-hidden">
+                    <span className="truncate flex-1 pr-4">{chat.title}</span>
                     <button 
                         onClick={(e) => handleDeleteHistory(e, chat.id)}
-                        className="absolute right-2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-opacity"
+                        className="absolute right-2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400 transition-opacity"
                     >
                         <Trash2 size={14} />
                     </button>
-                    <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#202123] to-transparent group-hover:from-[#2A2B32]"></div>
+                    <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#171717] to-transparent group-hover:from-[#212121]"></div>
                 </div>
             ))}
         </div>
 
-        {/* Sidebar Footer */}
-        <div className="p-2 border-t border-white/20 space-y-1">
-             <button onClick={onOpenGallery} className="flex items-center gap-3 px-3 py-3 w-full text-sm text-white hover:bg-[#2A2B32] rounded-md transition-colors text-left">
-                <ImageIcon size={16} />
-                <span>My Recordings</span>
-             </button>
-             
-             <div className="pt-1 border-t border-white/20 mt-1">
-                 {user ? (
-                    <div className="hover:bg-[#2A2B32] rounded-md transition-colors">
-                      <UserMenu onOpenPricing={onOpenPricing} onOpenProfile={onOpenProfile} />
+        {/* Profile Footer */}
+        <div className="p-3 border-t border-white/10">
+             {user ? (
+                <UserMenu onOpenPricing={onOpenPricing} onOpenProfile={onOpenProfile} />
+             ) : (
+                <button onClick={onOpenProfile} className="flex items-center gap-3 px-3 py-3 w-full text-sm text-white hover:bg-[#212121] rounded-lg transition-colors text-left">
+                    <div className="w-8 h-8 rounded bg-gray-700 flex items-center justify-center"><User size={16} /></div>
+                    <div className="flex-1">
+                        <div className="font-semibold">Sign up</div>
+                        <div className="text-xs text-gray-500">Free Research Preview</div>
                     </div>
-                 ) : (
-                    <button onClick={onOpenProfile} className="flex items-center gap-3 px-3 py-3 w-full text-sm text-white hover:bg-[#2A2B32] rounded-md transition-colors text-left">
-                        <User size={16} />
-                        <span>Log in</span>
-                    </button>
-                 )}
-             </div>
-        </div>
-      </div>
-
-      {/* Sidebar Overlay for Mobile */}
-      {showSidebar && (
-        <div 
-            className="fixed inset-0 bg-black/50 z-30 md:hidden"
-            onClick={() => setShowSidebar(false)}
-        />
-      )}
-
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col h-full relative min-w-0 bg-[#343541]">
-        
-        {/* Top Navigation Bar (Mobile) */}
-        <div className="sticky top-0 z-10 p-2 text-gray-500 bg-[#343541] border-b border-white/5 flex items-center justify-between md:hidden">
-            <button onClick={() => setShowSidebar(!showSidebar)} className="p-2 hover:bg-[#40414F] rounded-md">
-                <Menu size={24} />
-            </button>
-            <div className="flex items-center gap-2">
-                <span className="text-gray-200 font-medium">DasKartAI</span>
-            </div>
-            <button onClick={onClearChat} className="p-2 hover:bg-[#40414F] rounded-md">
-                <Plus size={24} />
-            </button>
-        </div>
-        
-        {/* Desktop Sidebar Toggle & Model Select */}
-        <div className="hidden md:flex absolute top-2 left-2 z-20">
-            {/* Sidebar Toggle */}
-             {!showSidebar && (
-                <button 
-                    onClick={() => setShowSidebar(true)} 
-                    className="p-2 text-gray-400 hover:text-white rounded-md transition-colors"
-                    title="Open Sidebar"
-                >
-                    <PanelLeft size={20} />
                 </button>
              )}
         </div>
+      </div>
 
-        {/* Model Selector (Centered Top) */}
-        <div className="hidden md:flex absolute top-0 w-full justify-center pt-2 z-10">
-            <div className="flex items-center gap-2 bg-[#202123] px-3 py-2 rounded-lg cursor-pointer hover:bg-[#2A2B32] transition-colors border border-white/10">
-                <span className="text-sm font-semibold text-gray-200">DasKartAI</span>
-                <span className="text-[10px] bg-[#19C37D] text-[#202123] px-1.5 py-0.5 rounded font-bold">PLUS</span>
+      {/* Sidebar Overlay (Mobile) */}
+      {showSidebar && <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setShowSidebar(false)} />}
+
+      {/* --- MAIN AREA --- */}
+      <div className="flex-1 flex flex-col h-full relative min-w-0 bg-[#212121]">
+        
+        {/* Top Header */}
+        <div className="absolute top-0 w-full flex items-center justify-between p-4 z-20">
+            {/* Left: Sidebar Toggle */}
+            <div className="flex items-center gap-2">
+                {!showSidebar && (
+                    <button onClick={() => setShowSidebar(true)} className="p-2 text-gray-400 hover:text-white rounded-md transition-colors">
+                        <PanelLeft size={20} />
+                    </button>
+                )}
+                {/* Mobile Menu */}
+                <button onClick={() => setShowSidebar(!showSidebar)} className="md:hidden p-2 text-gray-400 hover:text-white rounded-md">
+                    <Menu size={20} />
+                </button>
+                
+                {/* Version Selector (Desktop) */}
+                <button className="hidden md:flex items-center gap-2 text-gray-300 hover:bg-[#2F2F2F] px-3 py-2 rounded-lg transition-colors">
+                    <span className="text-lg font-semibold text-gray-200">DasKartAI 2.5</span>
+                    <ChevronDown size={16} className="text-gray-500" />
+                </button>
+            </div>
+
+            {/* Right: Actions */}
+            <div className="flex items-center gap-2">
+                <button onClick={onClearChat} className="p-2 text-gray-400 hover:bg-[#2F2F2F] rounded-full transition-colors">
+                    <Edit size={20} />
+                </button>
+                {user && (
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold cursor-pointer" onClick={onOpenProfile}>
+                        {user.name.charAt(0)}
+                    </div>
+                )}
             </div>
         </div>
 
-
-        {/* Messages Container */}
+        {/* Content Area */}
         <div className="flex-1 overflow-y-auto w-full scrollbar-thin scrollbar-thumb-gray-600">
-            {messages.length === 0 ? (
-                // Empty State
-                <div className="h-full flex flex-col items-center justify-center p-8 space-y-10">
-                    <div className="flex flex-col items-center mb-8">
-                        <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-4">
-                            <Logo className="w-10 h-10" disableText />
-                        </div>
-                        <h2 className="text-4xl font-semibold text-white">DasKartAI</h2>
+            {isEmptyState ? (
+                // EMPTY STATE (CENTERED)
+                <div className="h-full flex flex-col items-center justify-center p-4">
+                    <div className="mb-8 p-4 bg-white/5 rounded-full">
+                        <Logo className="w-12 h-12" disableText />
                     </div>
+                    <h2 className="text-3xl md:text-4xl font-semibold text-white mb-8 text-center">
+                        What's on the agenda today?
+                    </h2>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl">
-                        {SUGGESTIONS.map((s, i) => (
-                            <button
-                                key={i}
-                                onClick={() => onSendMessage(s.text)}
-                                className="px-4 py-3 bg-transparent border border-white/20 rounded-md hover:bg-[#40414F] text-left transition-colors flex items-center justify-between group"
-                            >
-                                <span className="text-sm text-gray-200">{s.text}</span>
-                                <Send size={14} className="opacity-0 group-hover:opacity-50" />
-                            </button>
-                        ))}
+                    {/* Input Area (Centered for Empty State) */}
+                    <div className="w-full max-w-2xl">
+                        <div className="relative bg-[#2F2F2F] rounded-[26px] shadow-lg border border-white/5 hover:border-white/10 transition-colors">
+                            <div className="flex items-end p-3 gap-3">
+                                <button className="p-2 bg-gray-700/50 hover:bg-gray-600 rounded-full text-white transition-colors mb-0.5">
+                                    <Plus size={20} />
+                                </button>
+                                
+                                <textarea
+                                    ref={inputRef}
+                                    value={inputValue}
+                                    onChange={(e) => {
+                                        setInputValue(e.target.value);
+                                        e.target.style.height = 'auto';
+                                        e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
+                                    }}
+                                    onKeyDown={handleKeyDown}
+                                    placeholder="Ask anything"
+                                    rows={1}
+                                    className="flex-1 bg-transparent border-none text-white placeholder-gray-400 focus:ring-0 resize-none py-3 px-0 max-h-[200px] text-base"
+                                    style={{ minHeight: '24px' }}
+                                />
+
+                                <div className="flex items-center gap-2 mb-0.5">
+                                    {inputValue.trim() ? (
+                                        <button 
+                                            onClick={() => { onSendMessage(inputValue); setInputValue(''); }}
+                                            className="p-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors"
+                                        >
+                                            <Send size={18} />
+                                        </button>
+                                    ) : (
+                                        <>
+                                            <button className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-colors">
+                                                <Mic size={20} />
+                                            </button>
+                                            <button 
+                                                onClick={onConnect}
+                                                className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"
+                                            >
+                                                <AudioLines size={20} />
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Suggestion Chips */}
+                        <div className="mt-8 flex flex-wrap justify-center gap-3">
+                            {['Create a workout plan', 'Summarize this article', 'Help me debug code', 'Write an email'].map((s, i) => (
+                                <button key={i} onClick={() => onSendMessage(s)} className="px-4 py-2 bg-transparent border border-white/10 rounded-full text-sm text-gray-300 hover:bg-white/5 transition-colors">
+                                    {s}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
             ) : (
-                // Messages
-                <div className="flex flex-col pb-40 pt-16">
+                // MESSAGES LIST
+                <div className="flex flex-col pb-40 pt-20">
                     {messages.map((msg) => (
                         <MessageBubble key={msg.id} msg={msg} />
                     ))}
@@ -355,60 +389,57 @@ export const Chat: React.FC<ChatProps> = ({
             )}
         </div>
 
-        {/* Input Area */}
-        <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-[#343541] via-[#343541] to-transparent pt-10 pb-8 px-4">
-            <div className="max-w-3xl mx-auto w-full relative">
-                
-                {/* Voice Mode Button (Floating above input) */}
-                <div className="absolute -top-14 right-0 md:-right-12">
-                   <button
-                        onClick={onConnect}
-                        className="p-3 bg-[#40414F] hover:bg-white text-white hover:text-black rounded-full transition-colors shadow-lg border border-white/10"
-                        title="Start Voice Mode"
-                    >
-                        <Headphones size={20} />
-                    </button>
-                </div>
+        {/* Bottom Input Area (Only visible when chatting) */}
+        {!isEmptyState && (
+            <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-[#212121] via-[#212121] to-transparent pt-10 pb-6 px-4">
+                <div className="max-w-3xl mx-auto w-full">
+                    <div className="relative bg-[#2F2F2F] rounded-[26px] shadow-lg border border-white/5">
+                        <div className="flex items-end p-3 gap-3">
+                            <button className="p-2 bg-gray-700/50 hover:bg-gray-600 rounded-full text-white transition-colors mb-0.5">
+                                <Plus size={20} />
+                            </button>
+                            
+                            <textarea
+                                ref={inputRef}
+                                value={inputValue}
+                                onChange={(e) => {
+                                    setInputValue(e.target.value);
+                                    e.target.style.height = 'auto';
+                                    e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
+                                }}
+                                onKeyDown={handleKeyDown}
+                                placeholder="Message DasKartAI..."
+                                rows={1}
+                                className="flex-1 bg-transparent border-none text-white placeholder-gray-400 focus:ring-0 resize-none py-3 px-0 max-h-[200px] text-base"
+                                style={{ minHeight: '24px' }}
+                            />
 
-                <div className="relative flex items-end gap-2 bg-[#40414F] border border-black/20 rounded-xl p-3 shadow-md focus-within:shadow-lg focus-within:border-black/30 transition-all">
-                    <textarea
-                        ref={inputRef}
-                        value={inputValue}
-                        onChange={(e) => {
-                            setInputValue(e.target.value);
-                            e.target.style.height = 'auto';
-                            e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
-                        }}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Send a message..."
-                        rows={1}
-                        className="w-full bg-transparent border-none text-white placeholder-gray-400 focus:ring-0 resize-none py-2 px-1 max-h-[200px] text-base scrollbar-hide"
-                        style={{ minHeight: '24px' }}
-                    />
-
-                    <button
-                        onClick={() => {
-                            if (inputValue.trim()) {
-                                onSendMessage(inputValue.trim());
-                                setInputValue('');
-                                if (inputRef.current) inputRef.current.style.height = 'auto';
-                            }
-                        }}
-                        disabled={!inputValue.trim()}
-                        className={`p-2 rounded-md transition-colors ${
-                            inputValue.trim() 
-                             ? 'bg-[#19C37D] text-white hover:bg-[#15a067]' 
-                             : 'bg-transparent text-gray-500 cursor-default'
-                        }`}
-                    >
-                        <Send size={16} />
-                    </button>
+                            <div className="flex items-center gap-2 mb-0.5">
+                                {inputValue.trim() ? (
+                                    <button 
+                                        onClick={() => { onSendMessage(inputValue); setInputValue(''); }}
+                                        className="p-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors"
+                                    >
+                                        <Send size={18} />
+                                    </button>
+                                ) : (
+                                    <button 
+                                        onClick={onConnect}
+                                        className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"
+                                        title="Start Voice Mode"
+                                    >
+                                        <AudioLines size={20} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    <p className="text-[11px] text-gray-500 text-center mt-2">
+                        DasKartAI can make mistakes. Consider checking important information.
+                    </p>
                 </div>
-                <p className="text-[11px] text-gray-500 text-center mt-2">
-                    Free Research Preview. DasKartAI may produce inaccurate information about people, places, or facts.
-                </p>
             </div>
-        </div>
+        )}
 
       </div>
     </div>
