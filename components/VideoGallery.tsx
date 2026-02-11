@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { X, Play, Trash2, Download, Film, ChevronLeft, Edit2, Save, Type, Palette, Move, Loader2 } from 'lucide-react';
 import { getVideos, deleteVideo, saveVideo, StoredVideo } from '../utils/video-storage';
@@ -10,24 +11,41 @@ const Thumbnail: React.FC<{ video: StoredVideo }> = ({ video }) => {
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!video.blob) return;
     const objectUrl = URL.createObjectURL(video.blob);
     setUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
   }, [video]);
 
-  if (!url) return <div className="w-full h-full bg-gray-900" />;
+  if (!url) {
+    return (
+        <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+            <Loader2 className="animate-spin text-gray-500" size={20} />
+        </div>
+    );
+  }
 
   return (
-    <video
-      src={url}
-      className="w-full h-full object-cover"
-      preload="metadata"
-      muted
-      playsInline
-      onLoadedMetadata={(e) => {
-        e.currentTarget.currentTime = 0.5; // Seek a bit to ensure we have an image
-      }}
-    />
+    <div className="w-full h-full bg-black relative">
+        <video
+            src={url}
+            className="w-full h-full object-cover"
+            muted
+            playsInline
+            preload="metadata"
+            onLoadedData={(e) => {
+                // Seek slightly into the video to find a non-black keyframe
+                // WebM blobs sometimes have black frames at 0.0
+                const v = e.currentTarget;
+                if (v.duration && v.duration > 0.5) {
+                    v.currentTime = 0.5;
+                } else {
+                    v.currentTime = 0;
+                }
+            }}
+            onError={(e) => console.warn("Thumbnail rendering failed", e)}
+        />
+    </div>
   );
 };
 
@@ -456,10 +474,10 @@ export const VideoGallery: React.FC<VideoGalleryProps> = ({ onClose }) => {
                 className="group relative bg-white/5 hover:bg-white/10 border border-white/5 hover:border-blue-500/30 rounded-xl overflow-hidden cursor-pointer transition-all duration-300 flex flex-col"
               >
                 {/* Thumbnail */}
-                <div className="aspect-video bg-black/40 relative group-hover:bg-black/60 transition-colors overflow-hidden">
+                <div className="aspect-video bg-black relative group-hover:bg-gray-900 transition-colors overflow-hidden">
                   <Thumbnail video={video} />
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-black/30">
-                    <div className="bg-blue-600 rounded-full p-3 shadow-lg shadow-blue-900/50">
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-black/40">
+                    <div className="bg-blue-600 rounded-full p-3 shadow-lg shadow-blue-900/50 scale-90 group-hover:scale-100 transition-transform">
                       <Play size={24} fill="white" className="text-white ml-1" />
                     </div>
                   </div>

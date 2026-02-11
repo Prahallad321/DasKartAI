@@ -1,6 +1,7 @@
+
 {
-  "name": "Nova - Human-like Voice AI",
-  "short_name": "Nova",
+  "name": "DasKartAI - Intelligent Shopping Assistant",
+  "short_name": "DasKartAI",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",

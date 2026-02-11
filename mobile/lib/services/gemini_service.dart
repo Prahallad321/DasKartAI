@@ -22,7 +22,7 @@ class ChatMessage {
 
 class GeminiService extends ChangeNotifier {
   // TODO: Secure your API Key
-  static const String _apiKey = String.fromEnvironment('API_KEY', defaultValue: ''); 
+  static const String _apiKey = String.fromEnvironment('API_KEY', defaultValue: 'AIzaSyA2pbTSWgOB9uzf-LvE_NWLO7i-jKQN4Xo'); 
   static const String _host = 'generativelanguage.googleapis.com';
   static const String _model = 'models/gemini-2.5-flash-native-audio-preview-12-2025';
 
