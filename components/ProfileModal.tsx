@@ -63,17 +63,17 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-200" onClick={onClose} />
       
-      <div className="relative w-full max-w-md bg-[#0F172A] border border-white/10 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+      <div className="relative w-full max-w-md bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
+        <div className="flex items-center justify-between p-6 border-b border-slate-800 bg-slate-800/50">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <User size={20} className="text-blue-400" />
+              <User size={20} className="text-blue-500" />
               Profile Settings
             </h2>
             <button 
               onClick={onClose} 
-              className="p-2 bg-white/5 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-colors"
+              className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full text-slate-400 hover:text-white transition-colors border border-slate-700 shadow-sm"
             >
                 <X size={18} />
             </button>
@@ -82,65 +82,65 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
         <div className="p-6 md:p-8">
           {/* Avatar Section */}
           <div className="flex flex-col items-center mb-8">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-4xl font-bold text-white shadow-xl shadow-blue-900/30 ring-4 ring-black/50">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-600 to-purple-700 flex items-center justify-center text-4xl font-bold text-white shadow-xl shadow-blue-500/20 ring-4 ring-slate-800">
                 {formData.name.charAt(0).toUpperCase()}
             </div>
-            <p className="mt-3 text-sm text-blue-300 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
+            <p className="mt-3 text-sm text-blue-300 bg-blue-900/30 px-3 py-1 rounded-full border border-blue-800 font-medium">
               {user.plan === 'pro' ? 'Pro Plan' : 'Trial Plan'}
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-300 text-xs flex items-center gap-2">
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs flex items-center gap-2">
                 <ShieldCheck size={14} />
                 {error}
               </div>
             )}
             
             {success && (
-              <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-green-300 text-xs text-center font-medium">
+              <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-green-400 text-xs text-center font-medium">
                 Changes saved successfully!
               </div>
             )}
 
             <div className="space-y-1.5">
-                <label className="text-xs text-gray-400 font-semibold ml-1 uppercase tracking-wider">Full Name</label>
+                <label className="text-xs text-slate-400 font-semibold ml-1 uppercase tracking-wider">Full Name</label>
                 <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                   <input 
                     type="text" 
                     required
                     value={formData.name}
                     onChange={e => setFormData({...formData, name: e.target.value})}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm"
                   />
                 </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs text-gray-400 font-semibold ml-1 uppercase tracking-wider">Email Address</label>
+              <label className="text-xs text-slate-400 font-semibold ml-1 uppercase tracking-wider">Email Address</label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                 <input 
                   type="email" 
                   required
                   value={formData.email}
                   onChange={e => setFormData({...formData, email: e.target.value})}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs text-gray-400 font-semibold ml-1 uppercase tracking-wider">New Password</label>
+              <label className="text-xs text-slate-400 font-semibold ml-1 uppercase tracking-wider">New Password</label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                 <input 
                   type="password" 
                   value={formData.password}
                   onChange={e => setFormData({...formData, password: e.target.value})}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm"
                   placeholder="Leave blank to keep current"
                 />
               </div>
@@ -149,7 +149,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
             <button
               type="submit"
               disabled={loading || success}
-              className="w-full mt-6 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full mt-6 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <Loader2 className="animate-spin" size={20} />

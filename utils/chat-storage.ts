@@ -1,3 +1,4 @@
+
 import { ChatMessage } from '../types';
 
 export interface StoredChat {
@@ -24,30 +25,42 @@ const initDB = (): Promise<IDBDatabase> => {
   });
 };
 
-export const saveChat = async (messages: ChatMessage[]): Promise<void> => {
+export const saveChat = async (id: string, messages: ChatMessage[]): Promise<void> => {
   if (messages.length === 0) return;
 
   const db = await initDB();
   const tx = db.transaction(STORE_NAME, 'readwrite');
   const store = tx.objectStore(STORE_NAME);
   
-  // Generate a title based on the first user message, or date
-  const firstUserMsg = messages.find(m => m.role === 'user');
-  const title = firstUserMsg 
-    ? (firstUserMsg.text.slice(0, 30) + (firstUserMsg.text.length > 30 ? '...' : ''))
-    : `Conversation ${new Date().toLocaleString()}`;
-
-  const chat: StoredChat = {
-    id: crypto.randomUUID(),
-    timestamp: Date.now(),
-    title,
-    messages
-  };
-  
-  store.add(chat);
   return new Promise((resolve, reject) => {
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+      const getReq = store.get(id);
+      
+      getReq.onsuccess = () => {
+          const existing = getReq.result as StoredChat | undefined;
+          
+          let title = existing?.title;
+          
+          // Generate title if new or if existing title was default/empty and we have user messages now
+          if (!title) {
+             const firstUserMsg = messages.find(m => m.role === 'user');
+             title = firstUserMsg 
+                ? (firstUserMsg.text.slice(0, 30) + (firstUserMsg.text.length > 30 ? '...' : ''))
+                : `Conversation ${new Date().toLocaleString()}`;
+          }
+    
+          const chat: StoredChat = {
+            id,
+            timestamp: Date.now(),
+            title,
+            messages
+          };
+          
+          const putReq = store.put(chat);
+          putReq.onsuccess = () => resolve();
+          putReq.onerror = () => reject(putReq.error);
+      };
+      
+      getReq.onerror = () => reject(getReq.error);
   });
 };
 

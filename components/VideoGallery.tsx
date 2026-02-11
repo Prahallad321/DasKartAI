@@ -19,8 +19,8 @@ const Thumbnail: React.FC<{ video: StoredVideo }> = ({ video }) => {
 
   if (!url) {
     return (
-        <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-            <Loader2 className="animate-spin text-gray-500" size={20} />
+        <div className="w-full h-full bg-slate-800 flex items-center justify-center">
+            <Loader2 className="animate-spin text-slate-500" size={20} />
         </div>
     );
   }
@@ -35,7 +35,6 @@ const Thumbnail: React.FC<{ video: StoredVideo }> = ({ video }) => {
             preload="metadata"
             onLoadedData={(e) => {
                 // Seek slightly into the video to find a non-black keyframe
-                // WebM blobs sometimes have black frames at 0.0
                 const v = e.currentTarget;
                 if (v.duration && v.duration > 0.5) {
                     v.currentTime = 0.5;
@@ -200,8 +199,6 @@ export const VideoGallery: React.FC<VideoGalleryProps> = ({ onClose }) => {
         await loadVideos();
         setIsProcessing(false);
         setIsEditing(false);
-        // Switch to the newly created video? Or just list.
-        // For now, go back to list or stay on current.
         setSelectedVideo(null); // Return to list to see new video
       };
 
@@ -252,9 +249,9 @@ export const VideoGallery: React.FC<VideoGalleryProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-xl flex flex-col animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[60] bg-slate-950/95 backdrop-blur-xl flex flex-col animate-in fade-in duration-200 text-white">
       {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-white/10 bg-black/50">
+      <div className="flex items-center justify-between p-6 border-b border-white/5 bg-slate-900/50">
         <div className="flex items-center gap-3">
           {selectedVideo ? (
             <button 
@@ -262,14 +259,14 @@ export const VideoGallery: React.FC<VideoGalleryProps> = ({ onClose }) => {
                   setSelectedVideo(null);
                   setIsEditing(false);
               }}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              className="p-2 hover:bg-slate-800 rounded-full transition-colors"
               disabled={isProcessing}
             >
               <ChevronLeft className="text-white" />
             </button>
           ) : (
-            <div className="p-2 bg-blue-500/20 rounded-lg">
-              <Film className="text-blue-400" size={24} />
+            <div className="p-2 bg-blue-500/10 rounded-lg">
+              <Film className="text-blue-500" size={24} />
             </div>
           )}
           <h2 className="text-xl font-bold text-white">
@@ -279,7 +276,7 @@ export const VideoGallery: React.FC<VideoGalleryProps> = ({ onClose }) => {
         {!isProcessing && (
             <button 
             onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white"
+            className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white"
             >
             <X size={24} />
             </button>
@@ -299,7 +296,7 @@ export const VideoGallery: React.FC<VideoGalleryProps> = ({ onClose }) => {
             {/* Video Container */}
             <div 
                 ref={editorContainerRef}
-                className="w-full max-w-4xl bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl relative group aspect-video"
+                className="w-full max-w-4xl bg-black rounded-2xl overflow-hidden border border-slate-700 shadow-2xl relative group aspect-video"
                 onMouseMove={isEditing ? handleDragMove : undefined}
                 onTouchMove={isEditing ? handleDragMove : undefined}
                 onMouseUp={isEditing ? handleDragEnd : undefined}
@@ -327,7 +324,7 @@ export const VideoGallery: React.FC<VideoGalleryProps> = ({ onClose }) => {
                           <p 
                             style={{ 
                                 color: overlay.color, 
-                                fontSize: `${overlay.fontSize}px`, // This is visual CSS size, not canvas size
+                                fontSize: `${overlay.fontSize}px`, 
                                 textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
                                 fontFamily: 'Inter, sans-serif',
                                 fontWeight: 'bold'
@@ -344,10 +341,10 @@ export const VideoGallery: React.FC<VideoGalleryProps> = ({ onClose }) => {
 
               {/* Processing Overlay */}
               {isProcessing && (
-                  <div className="absolute inset-0 bg-black/80 z-50 flex flex-col items-center justify-center">
+                  <div className="absolute inset-0 bg-slate-900/90 z-50 flex flex-col items-center justify-center">
                       <Loader2 className="animate-spin text-blue-500 mb-4" size={48} />
                       <p className="text-white font-medium mb-2">Saving Video...</p>
-                      <div className="w-64 h-2 bg-gray-800 rounded-full overflow-hidden">
+                      <div className="w-64 h-2 bg-slate-700 rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-blue-500 transition-all duration-200" 
                             style={{ width: `${processingProgress}%` }}
@@ -365,14 +362,14 @@ export const VideoGallery: React.FC<VideoGalleryProps> = ({ onClose }) => {
                   <div className="flex items-center gap-4">
                     <button 
                         onClick={() => setIsEditing(true)}
-                        className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-all font-medium shadow-lg shadow-blue-900/20"
+                        className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full transition-all font-medium shadow-lg shadow-blue-500/20"
                     >
                         <Edit2 size={18} />
                         Edit / Add Text
                     </button>
                     <button 
                         onClick={(e) => handleDownload(e, selectedVideo)}
-                        className="flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-all font-medium"
+                        className="flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-full transition-all font-medium text-slate-200"
                     >
                         <Download size={18} />
                         Download
@@ -387,24 +384,24 @@ export const VideoGallery: React.FC<VideoGalleryProps> = ({ onClose }) => {
                 </div>
               ) : (
                   // Editor Toolbar
-                  <div className="w-full bg-white/5 border border-white/10 rounded-xl p-4 animate-in slide-in-from-bottom-4">
+                  <div className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 animate-in slide-in-from-bottom-4 shadow-xl">
                       <div className="flex flex-wrap items-center justify-between gap-4">
                           
                           {/* Text Input */}
                           <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-                              <Type size={18} className="text-gray-400" />
+                              <Type size={18} className="text-slate-400" />
                               <input 
                                 type="text" 
                                 value={overlay.text}
                                 onChange={(e) => setOverlay({...overlay, text: e.target.value})}
-                                className="flex-1 bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                                className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
                                 placeholder="Enter text..."
                               />
                           </div>
 
                           {/* Font Size */}
                           <div className="flex items-center gap-2">
-                             <span className="text-xs text-gray-400 uppercase font-bold">Size</span>
+                             <span className="text-xs text-slate-400 uppercase font-bold">Size</span>
                              <input 
                                 type="range" 
                                 min="20" 
@@ -417,9 +414,9 @@ export const VideoGallery: React.FC<VideoGalleryProps> = ({ onClose }) => {
 
                           {/* Color Picker */}
                           <div className="flex items-center gap-2">
-                              <Palette size={18} className="text-gray-400" />
+                              <Palette size={18} className="text-slate-400" />
                               <div className="flex gap-1">
-                                  {['#ffffff', '#ef4444', '#3b82f6', '#22c55e', '#eab308'].map(c => (
+                                  {['#ffffff', '#ef4444', '#3b82f6', '#22c55e', '#eab308', '#000000'].map(c => (
                                       <button
                                         key={c}
                                         onClick={() => setOverlay({...overlay, color: c})}
@@ -430,29 +427,29 @@ export const VideoGallery: React.FC<VideoGalleryProps> = ({ onClose }) => {
                               </div>
                           </div>
 
-                          <div className="w-px h-8 bg-white/10 mx-2 hidden md:block" />
+                          <div className="w-px h-8 bg-slate-700 mx-2 hidden md:block" />
 
                           {/* Action Buttons */}
                           <div className="flex items-center gap-2">
                               <button 
                                 onClick={() => setIsEditing(false)}
                                 disabled={isProcessing}
-                                className="px-4 py-2 hover:bg-white/10 rounded-lg text-sm text-gray-300"
+                                className="px-4 py-2 hover:bg-slate-700 rounded-lg text-sm text-slate-300"
                               >
                                   Cancel
                               </button>
                               <button 
                                 onClick={saveEditedVideo}
                                 disabled={isProcessing}
-                                className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-lg shadow-blue-900/20 disabled:opacity-50 disabled:cursor-wait"
+                                className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium shadow-lg shadow-blue-900/20 disabled:opacity-50 disabled:cursor-wait"
                               >
                                   {isProcessing ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
                                   Save Video
                               </button>
                           </div>
                       </div>
-                      <p className="text-xs text-gray-500 mt-2 text-center md:text-left">
-                          Drag text on video to position. Saving re-renders the video (may take time).
+                      <p className="text-xs text-slate-500 mt-2 text-center md:text-left">
+                          Drag text on video to position. Saving re-renders the video.
                       </p>
                   </div>
               )}
@@ -460,7 +457,7 @@ export const VideoGallery: React.FC<VideoGalleryProps> = ({ onClose }) => {
           </div>
         ) : videos.length === 0 ? (
           // Empty State
-          <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-4">
+          <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-4">
             <Film size={64} className="opacity-20" />
             <p>No recordings yet</p>
           </div>
@@ -471,13 +468,13 @@ export const VideoGallery: React.FC<VideoGalleryProps> = ({ onClose }) => {
               <div 
                 key={video.id}
                 onClick={() => setSelectedVideo(video)}
-                className="group relative bg-white/5 hover:bg-white/10 border border-white/5 hover:border-blue-500/30 rounded-xl overflow-hidden cursor-pointer transition-all duration-300 flex flex-col"
+                className="group relative bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-blue-500 rounded-xl overflow-hidden cursor-pointer transition-all duration-300 flex flex-col shadow-sm hover:shadow-lg hover:shadow-blue-500/10"
               >
                 {/* Thumbnail */}
-                <div className="aspect-video bg-black relative group-hover:bg-gray-900 transition-colors overflow-hidden">
+                <div className="aspect-video bg-slate-800 relative group-hover:bg-slate-700 transition-colors overflow-hidden">
                   <Thumbnail video={video} />
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-black/40">
-                    <div className="bg-blue-600 rounded-full p-3 shadow-lg shadow-blue-900/50 scale-90 group-hover:scale-100 transition-transform">
+                    <div className="bg-blue-600 rounded-full p-3 shadow-lg scale-90 group-hover:scale-100 transition-transform">
                       <Play size={24} fill="white" className="text-white ml-1" />
                     </div>
                   </div>
@@ -486,7 +483,7 @@ export const VideoGallery: React.FC<VideoGalleryProps> = ({ onClose }) => {
                 {/* Info */}
                 <div className="p-4">
                   <h3 className="font-medium text-white truncate pr-6">{video.name}</h3>
-                  <div className="flex items-center justify-between mt-2 text-xs text-gray-400">
+                  <div className="flex items-center justify-between mt-2 text-xs text-slate-400">
                     <span>{formatDate(video.createdAt)}</span>
                     <span>{formatSize(video.size)}</span>
                   </div>
@@ -496,13 +493,13 @@ export const VideoGallery: React.FC<VideoGalleryProps> = ({ onClose }) => {
                 <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                   <button 
                     onClick={(e) => handleDownload(e, video)}
-                    className="p-2 bg-black/60 hover:bg-blue-600 rounded-full text-white backdrop-blur-sm transition-colors"
+                    className="p-2 bg-slate-900 hover:bg-blue-600 rounded-full text-slate-300 hover:text-white shadow-sm transition-colors"
                   >
                     <Download size={14} />
                   </button>
                   <button 
                     onClick={(e) => handleDelete(e, video.id)}
-                    className="p-2 bg-black/60 hover:bg-red-600 rounded-full text-white backdrop-blur-sm transition-colors"
+                    className="p-2 bg-slate-900 hover:bg-red-600 rounded-full text-slate-300 hover:text-white shadow-sm transition-colors"
                   >
                     <Trash2 size={14} />
                   </button>

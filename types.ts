@@ -28,6 +28,12 @@ export interface GroundingMetadata {
   webSearchQueries?: string[];
 }
 
+export interface Attachment {
+  mimeType: string;
+  data: string; // Base64 string
+  name?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'model';
@@ -35,6 +41,7 @@ export interface ChatMessage {
   timestamp: number;
   isFinal?: boolean;
   image?: string; // Base64 string for generated images
+  attachments?: Attachment[]; // User uploaded attachments
   groundingMetadata?: GroundingMetadata; // For search results
 }
 

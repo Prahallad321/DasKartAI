@@ -1,11 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Settings, ShieldAlert, LogOut, 
-  Search, Bell, Menu, X, CheckCircle, XCircle, AlertTriangle, 
-  Activity, Database, DollarSign, Lock, Eye, Trash2, Save,
-  Cpu, Power, Image as ImageIcon, MessageSquare
+  Search, Menu, CheckCircle, Lock, Trash2, Save,
+  Cpu, Activity, DollarSign, MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { authService } from '../../utils/auth-service';
@@ -16,7 +14,6 @@ import { Logo } from '../Logo';
 
 const AdminLogin = () => {
   const { login } = useAuth();
-  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -28,7 +25,7 @@ const AdminLogin = () => {
     setError('');
     try {
       await login(email, password);
-      // AuthContext will update user, layout will redirect
+      // AuthContext will update user, Main AdminPanel will re-render
     } catch (err: any) {
       setError('Invalid admin credentials');
     } finally {
@@ -37,8 +34,8 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-admin-bg flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-admin-card border border-white/10 rounded-2xl shadow-2xl p-8">
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-slate-900 border border-white/10 rounded-2xl shadow-2xl p-8">
         <div className="flex flex-col items-center mb-8">
            <Logo className="w-12 h-12 mb-4" />
            <h1 className="text-2xl font-bold text-white">Admin Control Panel</h1>
@@ -54,7 +51,7 @@ const AdminLogin = () => {
               type="email" 
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full bg-black/30 border border-white/10 rounded-lg p-3 text-white focus:border-daskart-blue focus:ring-1 focus:ring-daskart-blue outline-none"
+              className="w-full bg-black/30 border border-white/10 rounded-lg p-3 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
               required
             />
           </div>
@@ -64,7 +61,7 @@ const AdminLogin = () => {
               type="password" 
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full bg-black/30 border border-white/10 rounded-lg p-3 text-white focus:border-daskart-blue focus:ring-1 focus:ring-daskart-blue outline-none"
+              className="w-full bg-black/30 border border-white/10 rounded-lg p-3 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
               required
             />
           </div>
@@ -72,7 +69,7 @@ const AdminLogin = () => {
           <button 
             type="submit" 
             disabled={loading}
-            className="w-full py-3 bg-daskart-blue hover:bg-blue-600 text-white font-bold rounded-lg transition-colors disabled:opacity-50"
+            className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors disabled:opacity-50"
           >
             {loading ? 'Authenticating...' : 'Access Dashboard'}
           </button>
@@ -108,7 +105,7 @@ const Dashboard = () => {
 
       {/* Charts Section (Mock) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-         <div className="lg:col-span-2 bg-admin-card border border-white/5 rounded-xl p-6">
+         <div className="lg:col-span-2 bg-slate-900 border border-white/5 rounded-xl p-6">
             <h3 className="text-lg font-semibold text-white mb-4">User Growth</h3>
             <div className="h-64 flex items-end gap-2">
                {[40, 65, 45, 70, 85, 60, 75, 90, 80, 95, 100, 85].map((h, i) => (
@@ -122,11 +119,11 @@ const Dashboard = () => {
             </div>
          </div>
          
-         <div className="bg-admin-card border border-white/5 rounded-xl p-6">
+         <div className="bg-slate-900 border border-white/5 rounded-xl p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Storage Usage</h3>
             <div className="flex items-center justify-center py-8">
                <div className="relative w-40 h-40 rounded-full border-8 border-gray-700 flex items-center justify-center">
-                  <div className="absolute inset-0 border-8 border-daskart-orange rounded-full" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 75%, 0 75%)' }}></div>
+                  <div className="absolute inset-0 border-8 border-orange-500 rounded-full" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 75%, 0 75%)' }}></div>
                   <div className="text-center">
                      <div className="text-2xl font-bold text-white">75%</div>
                      <div className="text-xs text-gray-400">{stats.storageUsed}</div>
@@ -137,7 +134,7 @@ const Dashboard = () => {
       </div>
       
       {/* Recent Logs Mock */}
-      <div className="bg-admin-card border border-white/5 rounded-xl p-6">
+      <div className="bg-slate-900 border border-white/5 rounded-xl p-6">
          <h3 className="text-lg font-semibold text-white mb-4">Security Events</h3>
          <div className="space-y-3">
             {[1,2,3].map(i => (
@@ -199,12 +196,12 @@ const UserManagement = () => {
               placeholder="Search users..." 
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="bg-admin-card border border-white/10 rounded-full pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500" 
+              className="bg-slate-900 border border-white/10 rounded-full pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500" 
             />
          </div>
       </div>
 
-      <div className="bg-admin-card border border-white/5 rounded-xl overflow-hidden">
+      <div className="bg-slate-900 border border-white/5 rounded-xl overflow-hidden">
          <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
                <thead className="bg-black/20 text-gray-400 font-medium">
@@ -240,7 +237,7 @@ const UserManagement = () => {
                           </td>
                           <td className="p-4">
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  u.plan === 'pro' ? 'bg-daskart-orange/20 text-daskart-orange' : 'bg-blue-500/20 text-blue-400'
+                                  u.plan === 'pro' ? 'bg-orange-500/20 text-orange-400' : 'bg-blue-500/20 text-blue-400'
                               }`}>
                                   {u.plan.toUpperCase()}
                               </span>
@@ -303,7 +300,7 @@ const SystemSettings = () => {
                 <h2 className="text-2xl font-bold text-white">System Settings</h2>
                 <button 
                   onClick={handleSave}
-                  className="flex items-center gap-2 px-6 py-2 bg-daskart-blue hover:bg-blue-600 text-white font-medium rounded-lg transition-colors"
+                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors"
                 >
                     {saved ? <CheckCircle size={18} /> : <Save size={18} />}
                     {saved ? 'Saved' : 'Save Changes'}
@@ -312,9 +309,9 @@ const SystemSettings = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Feature Flags */}
-                <div className="bg-admin-card border border-white/5 rounded-xl p-6 space-y-6">
+                <div className="bg-slate-900 border border-white/5 rounded-xl p-6 space-y-6">
                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                        <Cpu size={20} className="text-daskart-orange" /> Feature Control
+                        <Cpu size={20} className="text-orange-400" /> Feature Control
                     </h3>
                     
                     <Toggle 
@@ -339,9 +336,9 @@ const SystemSettings = () => {
                 </div>
 
                 {/* AI Configuration */}
-                <div className="bg-admin-card border border-white/5 rounded-xl p-6">
+                <div className="bg-slate-900 border border-white/5 rounded-xl p-6">
                      <h3 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
-                        <Activity size={20} className="text-daskart-blue" /> AI Configuration
+                        <Activity size={20} className="text-blue-400" /> AI Configuration
                     </h3>
                     
                     <div className="space-y-2">
@@ -350,7 +347,7 @@ const SystemSettings = () => {
                             value={settings.systemInstruction}
                             onChange={e => setSettings({...settings, systemInstruction: e.target.value})}
                             rows={6}
-                            className="w-full bg-black/30 border border-white/10 rounded-lg p-3 text-white text-sm focus:border-daskart-blue outline-none resize-none"
+                            className="w-full bg-black/30 border border-white/10 rounded-lg p-3 text-white text-sm focus:border-blue-500 outline-none resize-none"
                         />
                         <p className="text-xs text-gray-500">This prompt overrides the default behavior for all new sessions.</p>
                     </div>
@@ -358,7 +355,7 @@ const SystemSettings = () => {
             </div>
 
             {/* API Keys (Simulation) */}
-            <div className="bg-admin-card border border-white/5 rounded-xl p-6">
+            <div className="bg-slate-900 border border-white/5 rounded-xl p-6">
                 <h3 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
                     <Lock size={20} className="text-gray-400" /> API Key Management
                 </h3>
@@ -367,7 +364,7 @@ const SystemSettings = () => {
                         <div className="font-medium text-white">Gemini API Key</div>
                         <div className="text-xs text-gray-500 font-mono">AIzaSy...4Xo</div>
                     </div>
-                    <button className="text-sm text-daskart-blue hover:underline">Rotate Key</button>
+                    <button className="text-sm text-blue-400 hover:underline">Rotate Key</button>
                 </div>
             </div>
         </div>
@@ -390,7 +387,7 @@ const Toggle = ({ label, desc, active, onChange, danger = false }: any) => (
 );
 
 const MetricCard = ({ title, value, icon, trend }: any) => (
-    <div className="bg-admin-card border border-white/5 rounded-xl p-6">
+    <div className="bg-slate-900 border border-white/5 rounded-xl p-6">
         <div className="flex items-start justify-between mb-4">
             <div className="p-2 bg-white/5 rounded-lg">{icon}</div>
             <span className="text-xs font-medium text-green-400 bg-green-500/10 px-2 py-0.5 rounded">{trend}</span>
@@ -404,8 +401,7 @@ const MetricCard = ({ title, value, icon, trend }: any) => (
 
 export const AdminPanel = () => {
     const { user, logout } = useAuth();
-    const location = useLocation();
-    const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState('dashboard');
 
     // Route Protection
     if (!user || user.role !== 'admin') {
@@ -413,20 +409,22 @@ export const AdminPanel = () => {
     }
 
     const navItems = [
-        { path: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-        { path: '/admin/users', label: 'Users', icon: <Users size={20} /> },
-        { path: '/admin/settings', label: 'Settings', icon: <Settings size={20} /> },
+        { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
+        { id: 'users', label: 'Users', icon: <Users size={20} /> },
+        { id: 'settings', label: 'Settings', icon: <Settings size={20} /> },
     ];
 
     const handleLogout = async () => {
         await logout();
-        navigate('/admin');
+        window.history.pushState({}, '', '/');
+        // Force popstate event to trigger app re-render
+        window.dispatchEvent(new PopStateEvent('popstate'));
     };
 
     return (
-        <div className="flex h-screen bg-admin-bg text-gray-300 font-sans overflow-hidden">
+        <div className="flex h-screen bg-slate-950 text-gray-300 font-sans overflow-hidden">
             {/* Sidebar */}
-            <div className="w-64 bg-admin-card border-r border-white/5 flex flex-col hidden md:flex">
+            <div className="w-64 bg-slate-900 border-r border-white/5 flex flex-col hidden md:flex">
                 <div className="p-6 flex items-center gap-3">
                     <Logo className="w-8 h-8" />
                     <div>
@@ -437,18 +435,18 @@ export const AdminPanel = () => {
 
                 <nav className="flex-1 px-4 space-y-1 py-4">
                     {navItems.map(item => {
-                        const active = location.pathname === item.path;
+                        const active = activeTab === item.id;
                         return (
-                            <Link 
-                                key={item.path} 
-                                to={item.path}
-                                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                                    active ? 'bg-daskart-blue text-white shadow-lg shadow-blue-900/20' : 'hover:bg-white/5 text-gray-400 hover:text-white'
+                            <button
+                                key={item.id} 
+                                onClick={() => setActiveTab(item.id)}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-left ${
+                                    active ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'hover:bg-white/5 text-gray-400 hover:text-white'
                                 }`}
                             >
                                 {item.icon}
                                 <span className="font-medium text-sm">{item.label}</span>
-                            </Link>
+                            </button>
                         );
                     })}
                 </nav>
@@ -472,18 +470,16 @@ export const AdminPanel = () => {
             {/* Main Content */}
             <div className="flex-1 flex flex-col h-full overflow-hidden">
                 {/* Mobile Header */}
-                <div className="md:hidden flex items-center justify-between p-4 bg-admin-card border-b border-white/5">
+                <div className="md:hidden flex items-center justify-between p-4 bg-slate-900 border-b border-white/5">
                     <Logo className="w-8 h-8" />
                     <button className="text-gray-400"><Menu size={24} /></button>
                 </div>
 
                 {/* Content Area */}
                 <main className="flex-1 overflow-y-auto admin-scroll p-6 md:p-8">
-                    <Routes>
-                        <Route path="/" element={<Dashboard />} />
-                        <Route path="/users" element={<UserManagement />} />
-                        <Route path="/settings" element={<SystemSettings />} />
-                    </Routes>
+                    {activeTab === 'dashboard' && <Dashboard />}
+                    {activeTab === 'users' && <UserManagement />}
+                    {activeTab === 'settings' && <SystemSettings />}
                 </main>
             </div>
         </div>

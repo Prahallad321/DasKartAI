@@ -28,7 +28,8 @@ export const Logo: React.FC<LogoProps> = ({ className = "w-8 h-8", disableText =
           stroke="url(#daskart-gradient)" 
           strokeWidth="6" 
           strokeLinejoin="round"
-          fill="rgba(255, 255, 255, 0.05)"
+          fill="currentColor"
+          fillOpacity="0.05"
         />
         
         {/* Handle */}
@@ -44,17 +45,17 @@ export const Logo: React.FC<LogoProps> = ({ className = "w-8 h-8", disableText =
         <circle cx="65" cy="75" r="6" fill="#00C2FF" />
         
         {/* Brain/Circuit Details inside Cart */}
-        <circle cx="50" cy="45" r="4" fill="white" />
-        <path d="M50 45 L35 35" stroke="white" strokeWidth="3" strokeLinecap="round" />
-        <path d="M50 45 L65 35" stroke="white" strokeWidth="3" strokeLinecap="round" />
-        <path d="M50 45 L50 55" stroke="white" strokeWidth="3" strokeLinecap="round" />
+        <circle cx="50" cy="45" r="4" fill="currentColor" />
+        <path d="M50 45 L35 35" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+        <path d="M50 45 L65 35" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+        <path d="M50 45 L50 55" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
         
         <circle cx="35" cy="35" r="2.5" fill="#00C2FF" />
         <circle cx="65" cy="35" r="2.5" fill="#F7941D" />
-        <circle cx="50" cy="55" r="2.5" fill="white" />
+        <circle cx="50" cy="55" r="2.5" fill="currentColor" />
       </svg>
       {!disableText && (
-        <span className="font-bold text-xl tracking-tight text-white">
+        <span className="font-bold text-xl tracking-tight text-inherit">
           DasKart<span className="text-[#00C2FF]">AI</span>
         </span>
       )}

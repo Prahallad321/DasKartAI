@@ -6,7 +6,7 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#020617" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="DasKartAI" />
@@ -18,11 +18,11 @@
         theme: {
           extend: {
             colors: {
-              'daskart-blue': '#00C2FF', /* Bright Cyan/Blue from logo */
-              'daskart-orange': '#F7941D', /* Orange from logo */
-              'daskart-dark': '#0f172a',
-              'admin-bg': '#0B1120',
-              'admin-card': '#1E293B',
+              'daskart-blue': '#3B82F6', /* Blue 500 */
+              'daskart-orange': '#F97316', /* Orange 500 */
+              'daskart-dark': '#020617',
+              'admin-bg': '#0f172a',
+              'admin-card': '#1e293b',
             },
             animation: {
               'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
@@ -33,26 +33,26 @@
     </script>
     <style>
       body {
-        background-color: #000;
-        color: #fff;
+        background-color: #020617;
+        color: #f8fafc;
         font-family: 'Inter', sans-serif;
         overflow: hidden;
         overscroll-behavior: none;
         -webkit-tap-highlight-color: transparent;
       }
-      /* Custom Scrollbar for Admin Panel */
-      .admin-scroll::-webkit-scrollbar {
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
       }
-      .admin-scroll::-webkit-scrollbar-track {
+      ::-webkit-scrollbar-track {
         background: #0f172a; 
       }
-      .admin-scroll::-webkit-scrollbar-thumb {
+      ::-webkit-scrollbar-thumb {
         background: #334155; 
         border-radius: 4px;
       }
-      .admin-scroll::-webkit-scrollbar-thumb:hover {
+      ::-webkit-scrollbar-thumb:hover {
         background: #475569; 
       }
     </style>
@@ -64,7 +64,10 @@
     "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
     "react-router-dom": "https://esm.sh/react-router-dom@^6.22.3",
-    "lucide-react": "https://esm.sh/lucide-react@^0.563.0"
+    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
+    "express": "https://esm.sh/express@^5.2.1",
+    "dotenv": "https://esm.sh/dotenv@^17.2.4",
+    "cors": "https://esm.sh/cors@^2.8.6"
   }
 }
 </script>
