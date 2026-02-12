@@ -24,6 +24,7 @@ const VOICES: { id: VoiceId; label: string; desc: string }[] = [
 const MODELS = [
   { category: 'Gemini (Google)', items: [
       { id: 'gemini-2.5-flash-native-audio-preview-12-2025', label: 'Gemini 2.5 Flash Live', desc: 'Optimized for Real-time Audio/Video' },
+      { id: 'gemini-3-pro-preview', label: 'Gemini 3 Pro', desc: 'Complex tasks & reasoning' },
       { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', desc: 'Text-out model' },
       { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', desc: 'Text-out model' },
       { id: 'gemini-2.0-flash', label: 'Gemini 2 Flash', desc: 'Text-out model' },

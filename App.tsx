@@ -15,7 +15,7 @@ import { useAuth } from './contexts/AuthContext';
 import { Loader2, X, AlertTriangle, FileText } from 'lucide-react';
 import { VoiceId, ChatMessage, Attachment } from './types';
 import { saveVideo } from './utils/video-storage';
-import { saveChat, StoredChat } from './utils/chat-storage';
+import { saveChat, StoredChat, getChats } from './utils/chat-storage';
 import { AdminPanel } from './components/admin/AdminPanel';
 import { api } from './services/api';
 
@@ -56,6 +56,24 @@ const ClientApp: React.FC = () => {
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+
+  // --- Load Last Session on Mount ---
+  useEffect(() => {
+    const loadLastSession = async () => {
+      try {
+        const chats = await getChats();
+        if (chats.length > 0) {
+          // getChats returns sorted by timestamp desc (newest first)
+          const lastChat = chats[0];
+          setMessages(lastChat.messages);
+          setCurrentChatId(lastChat.id);
+        }
+      } catch (e) {
+        console.error("Failed to load history", e);
+      }
+    };
+    loadLastSession();
+  }, []);
 
   // --- Auto-Save Effect ---
   // Saves chat history whenever a message is finalized (isFinal: true).
