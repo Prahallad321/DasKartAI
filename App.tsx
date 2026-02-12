@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLiveApi } from './hooks/use-live-api';
 import { AudioVisualizer } from './components/AudioVisualizer';
@@ -30,7 +29,7 @@ const ClientApp: React.FC = () => {
   const [isCamOn, setIsCamOn] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState<VoiceId>('Puck');
-  const [systemInstruction, setSystemInstruction] = useState("You are DasKartAI, a warm, engaging, and human-like AI assistant.");
+  const [systemInstruction, setSystemInstruction] = useState("You are DasKartAI, a warm, engaging, and extremely human-like AI assistant. You speak casually and naturally, like a real person having a conversation with a friend. You use natural fillers like 'hmm', 'I see', or 'got it' occasionally when appropriate. You avoid robotic phrasing, bulleted lists in speech, or stiff formality. You are helpful, warm, and concise.");
   const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-flash-native-audio-preview-12-2025');
 
   // UI State
@@ -148,6 +147,11 @@ const ClientApp: React.FC = () => {
                      m.attachments.forEach(att => {
                          parts.push({ inlineData: { mimeType: att.mimeType, data: att.data } });
                      });
+                 }
+
+                 // INCLUDE MODEL GENERATED IMAGES IN HISTORY
+                 if (m.role === 'model' && m.image) {
+                     parts.push({ inlineData: { mimeType: 'image/png', data: m.image } });
                  }
                  
                  return {
