@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { ChatMessage, Attachment, User } from "../types";
 import { authService } from "../utils/auth-service";
@@ -22,6 +23,17 @@ class ApiService {
             throw new Error("Subscription Trial Expired. Please upgrade to continue.");
         }
     }
+  }
+
+  // Helper to get current location
+  private async getCurrentPosition(): Promise<GeolocationPosition> {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error("Geolocation not supported"));
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+    });
   }
 
   // --- Helper: Parse Options from Prompt ---
@@ -238,6 +250,9 @@ class ApiService {
     const lowerText = text.toLowerCase();
     const isVideoIntent = /^(animate|create video|make video|generate video|motion|movie)/i.test(lowerText) || model.startsWith('veo');
     const isImageIntent = /^(draw|generate image|create image|create a picture|paint|make an image|sketch)/i.test(lowerText) || model.includes('image');
+    
+    // Check for Maps intent
+    const isMapsIntent = /^(where|find|locate|map|near|directions|place|restaurant|store|shop|park|museum|coffee)/i.test(lowerText);
 
     let contextImageBase64: string | undefined = undefined;
 
@@ -278,7 +293,30 @@ class ApiService {
     }
 
     let actualModel = model;
-    if (actualModel === 'gemini-2.5-flash-native-audio-preview-12-2025' || actualModel.startsWith('veo') || actualModel.includes('image')) {
+    let tools: any[] = [{ googleSearch: {} }];
+    let toolConfig: any = undefined;
+
+    if (isMapsIntent) {
+        // Force model to gemini-2.5-flash for maps grounding support
+        actualModel = 'gemini-2.5-flash';
+        tools = [{ googleMaps: {} }];
+        
+        // Try to get user location
+        try {
+             const pos = await this.getCurrentPosition();
+             toolConfig = { 
+                retrievalConfig: { 
+                    latLng: { 
+                        latitude: pos.coords.latitude, 
+                        longitude: pos.coords.longitude 
+                    } 
+                } 
+             };
+        } catch (e) { 
+            console.warn("Could not get location for maps grounding:", e);
+            // Continue without location, maps tool might still work for general queries
+        }
+    } else if (actualModel === 'gemini-2.5-flash-native-audio-preview-12-2025' || actualModel.startsWith('veo') || actualModel.includes('image')) {
         actualModel = 'gemini-3-flash-preview';
     }
 
@@ -316,7 +354,8 @@ class ApiService {
         model: actualModel,
         config: { 
             systemInstruction,
-            tools: [{ googleSearch: {} }]
+            tools: tools,
+            toolConfig: toolConfig
         },
         history
     });

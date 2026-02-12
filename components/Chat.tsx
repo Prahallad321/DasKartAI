@@ -4,7 +4,7 @@ import {
   Send, X, MessageSquare, User, Sparkles, History, Menu, Trash2, Download, Copy, Edit, 
   MoreHorizontal, Headphones, Settings, Image as ImageIcon, PanelLeftClose, PanelLeft, 
   Search, Plus, Globe, ExternalLink, ChevronDown, Mic, AudioLines, FolderPlus, MonitorPlay,
-  ChevronUp, LogIn, Loader2, Volume2, MicOff, FileText, Camera, LayoutGrid, Zap, Play, Square, Video, Check, ShoppingBag
+  ChevronUp, LogIn, Loader2, Volume2, MicOff, FileText, Camera, LayoutGrid, Zap, Play, Square, Video, Check, ShoppingBag, MapPin
 } from 'lucide-react';
 import { ChatMessage, User as UserType, Attachment } from '../types';
 import { getChats, deleteChat, clearAllChats, StoredChat } from '../utils/chat-storage';
@@ -12,6 +12,7 @@ import { UserMenu } from './UserMenu';
 import { Logo } from './Logo';
 import { VideoRecorder } from './VideoRecorder';
 import { api } from '../services/api'; // Import API service
+import { decode, decodeAudioData } from '../utils/audio-utils';
 
 interface ChatProps {
   messages: ChatMessage[];
@@ -96,15 +97,24 @@ const FormattedText: React.FC<{ text: string, highlight?: string }> = ({ text, h
 // Helper: Grounding Sources
 const GroundingSources: React.FC<{ metadata: any }> = ({ metadata }) => {
   if (!metadata || !metadata.groundingChunks || !Array.isArray(metadata.groundingChunks)) return null;
-  const sources = metadata.groundingChunks.map((chunk: any) => chunk.web).filter((web: any) => web && web.uri && web.title);
+  
+  const sources = metadata.groundingChunks.map((chunk: any) => {
+      if (chunk.web) return { ...chunk.web, type: 'web' };
+      if (chunk.maps) return { ...chunk.maps, type: 'map' };
+      return null;
+  }).filter((s: any) => s && s.uri && s.title);
+
   if (sources.length === 0) return null;
+
   return (
     <div className="mt-4 pt-4 border-t border-slate-700/50">
       <div className="flex items-center gap-2 mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider"><Globe size={12} /> Sources</div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {sources.map((source: any, idx: number) => (
           <a key={idx} href={source.uri} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 p-3 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 rounded-md transition-colors group">
-            <div className="mt-0.5 p-1.5 bg-blue-500/10 text-blue-400 rounded-md"><ExternalLink size={12} /></div>
+            <div className={`mt-0.5 p-1.5 rounded-md ${source.type === 'map' ? 'bg-red-500/10 text-red-400' : 'bg-blue-500/10 text-blue-400'}`}>
+                {source.type === 'map' ? <MapPin size={12} /> : <ExternalLink size={12} />}
+            </div>
             <div className="flex-1 min-w-0">
                <div className="text-sm font-medium text-slate-200 truncate group-hover:underline">{source.title}</div>
                <div className="text-xs text-slate-500 truncate mt-0.5">{new URL(source.uri).hostname}</div>
@@ -407,13 +417,18 @@ export const Chat: React.FC<ChatProps> = ({
        const audioBase64 = await api.generateSpeech(text);
        if (!audioBase64) throw new Error("No audio generated");
 
-       const audioBytes = Uint8Array.from(atob(audioBase64), c => c.charCodeAt(0));
-       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-       const audioBuffer = await audioContext.decodeAudioData(audioBytes.buffer);
+       // Gemini TTS returns raw PCM data, so we must decode it manually
+       const audioBytes = decode(audioBase64);
+       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+       const audioBuffer = await decodeAudioData(audioBytes, audioContext, 24000, 1);
+       
        const source = audioContext.createBufferSource();
        source.buffer = audioBuffer;
        source.connect(audioContext.destination);
-       source.onended = () => setVoiceState('idle');
+       source.onended = () => {
+           setVoiceState('idle');
+           // audioContext.close(); // Clean up context if needed, but keeping simple for now
+       };
        source.start();
     } catch (e) {
        console.error("TTS Error", e);

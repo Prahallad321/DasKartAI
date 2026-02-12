@@ -23,6 +23,10 @@ export interface GroundingMetadata {
       uri?: string;
       title?: string;
     };
+    maps?: {
+      uri?: string;
+      title?: string;
+    };
   }[];
   groundingSupports?: any[];
   webSearchQueries?: string[];
