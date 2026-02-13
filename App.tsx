@@ -1,9 +1,11 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLiveApi } from './hooks/use-live-api';
 import { AudioVisualizer } from './components/AudioVisualizer';
 import { ControlTray } from './components/ControlTray';
 import { VideoGallery } from './components/VideoGallery';
 import { Chat } from './components/Chat';
+import { LiveChat } from './components/LiveChat';
 import { AuthModal } from './components/AuthModal';
 import { PricingModal } from './components/PricingModal';
 import { ProfileModal } from './components/ProfileModal';
@@ -12,7 +14,7 @@ import { TranscriptPanel } from './components/TranscriptPanel';
 import { LiveCaptions } from './components/LiveCaptions';
 import { Logo } from './components/Logo';
 import { useAuth } from './contexts/AuthContext';
-import { Loader2, X, AlertTriangle, FileText } from 'lucide-react';
+import { Loader2, X, AlertTriangle, FileText, MessageSquare } from 'lucide-react';
 import { VoiceId, ChatMessage, Attachment } from './types';
 import { saveVideo } from './utils/video-storage';
 import { saveChat, StoredChat, getChats } from './utils/chat-storage';
@@ -29,7 +31,7 @@ const ClientApp: React.FC = () => {
   const [isCamOn, setIsCamOn] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState<VoiceId>('Puck');
-  const [systemInstruction, setSystemInstruction] = useState("You are DasKartAI, a warm, engaging, and extremely human-like AI assistant. You speak casually and naturally, like a real person having a conversation with a friend. You use natural fillers like 'hmm', 'I see', or 'got it' occasionally when appropriate. You avoid robotic phrasing, bulleted lists in speech, or stiff formality. You are helpful, warm, and concise.");
+  const [systemInstruction, setSystemInstruction] = useState("You are DasKartAI, a warm, engaging, and extremely human-like AI assistant. You speak casually and naturally, like a real person having a conversation with a friend. You use natural fillers like 'hmm', 'I see', or 'got it' occasionally when appropriate. You avoid robotic phrasing, bulleted lists in speech, or stiff formality. You are helpful, warm, and concise. You have access to Google Search to provide up-to-date information when asked.");
   const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-flash-native-audio-preview-12-2025');
 
   // UI State
@@ -39,6 +41,7 @@ const ClientApp: React.FC = () => {
   const [showPricing, setShowPricing] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [showLiveChat, setShowLiveChat] = useState(false);
   
   // Chat State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -112,7 +115,7 @@ const ClientApp: React.FC = () => {
     onConnectionChange: (connected) => {
       if (!connected) {
         if (isRecordingRef.current) stopRecording();
-        setIsCamOn(false); stopCamera(); setShowTranscript(false);
+        setIsCamOn(false); stopCamera(); setShowTranscript(false); setShowLiveChat(false);
         // Final save on disconnect to capture any stragglers
         if (messagesRef.current.length > 0) saveChat(currentChatIdRef.current, messagesRef.current).catch(console.error);
       }
@@ -277,11 +280,17 @@ const ClientApp: React.FC = () => {
         <div className="absolute top-0 w-full p-6 flex justify-between items-center z-10">
             <button onClick={disconnect} className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-gray-300 transition-colors"><X size={24} /></button>
             <div className="flex items-center gap-2 px-4 py-2 bg-slate-900 rounded-full shadow-lg border border-white/10"><Logo className="h-6 w-6" disableText={false} /><span className="text-sm font-semibold text-blue-400 tracking-wide ml-2">LIVE</span></div>
-            <button onClick={() => setShowTranscript(!showTranscript)} className={`p-2 rounded-full transition-colors flex items-center gap-2 px-4 border border-transparent ${showTranscript ? 'bg-blue-600 text-white border-blue-400' : 'bg-white/10 text-gray-300 hover:bg-white/20 border-white/5'}`}><FileText size={20} /><span className="hidden md:inline text-sm font-medium">Transcript</span></button>
+            <div className="flex gap-2">
+                <button onClick={() => setShowLiveChat(!showLiveChat)} className={`p-2 rounded-full transition-colors flex items-center gap-2 px-4 border border-transparent ${showLiveChat ? 'bg-blue-600 text-white border-blue-400' : 'bg-white/10 text-gray-300 hover:bg-white/20 border-white/5'}`}>
+                    <MessageSquare size={20} />
+                    <span className="hidden md:inline text-sm font-medium">Chat</span>
+                </button>
+                <button onClick={() => setShowTranscript(!showTranscript)} className={`p-2 rounded-full transition-colors flex items-center gap-2 px-4 border border-transparent ${showTranscript ? 'bg-blue-600 text-white border-blue-400' : 'bg-white/10 text-gray-300 hover:bg-white/20 border-white/5'}`}><FileText size={20} /><span className="hidden md:inline text-sm font-medium">Transcript</span></button>
+            </div>
         </div>
 
         <main className="flex-1 flex flex-col items-center justify-center relative">
-             <div className={`relative w-full max-w-2xl aspect-square flex items-center justify-center transition-all duration-300 ${showTranscript ? 'md:-translate-x-32' : ''}`}>
+             <div className={`relative w-full max-w-2xl aspect-square flex items-center justify-center transition-all duration-300 ${showTranscript || showLiveChat ? 'md:-translate-x-32' : ''}`}>
                 <div className={`absolute top-0 right-0 w-32 h-32 m-4 rounded-xl border border-white/20 shadow-2xl overflow-hidden z-20 transition-opacity duration-500 bg-black ${isCamOn ? 'opacity-100' : 'opacity-0'}`}>
                     <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" />
                     {isRecording && <div className="absolute top-2 right-2 flex items-center gap-1 bg-red-500/80 px-2 py-0.5 rounded text-[10px] font-bold text-white"><div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />REC</div>}
@@ -290,8 +299,19 @@ const ClientApp: React.FC = () => {
                 <div className={`absolute w-1/3 h-1/3 transition-opacity ${isMicOn ? 'opacity-100' : 'opacity-0'}`}><AudioVisualizer analyser={inputAnalyser} barColor="#F97316" /></div>
                 <div className={`absolute w-4 h-4 rounded-full shadow-[0_0_30px_rgba(255,255,255,0.4)] transition-all duration-300 ${isAiSpeaking ? 'bg-blue-400 animate-pulse scale-125' : 'bg-white'}`} />
              </div>
-             <LiveCaptions lastMessage={lastMessage} isUserSpeaking={isUserSpeaking} isAiSpeaking={isAiSpeaking} />
+             
+             {!showLiveChat && (
+                <LiveCaptions lastMessage={lastMessage} isUserSpeaking={isUserSpeaking} isAiSpeaking={isAiSpeaking} />
+             )}
+             
              {isError && <div className="absolute bottom-32 px-4 py-2 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200 text-sm flex items-center gap-2"><AlertTriangle size={16} /> {isError}</div>}
+             
+             <LiveChat 
+                isOpen={showLiveChat} 
+                onClose={() => setShowLiveChat(false)} 
+                messages={messages} 
+                onSendMessage={handleSendMessage} 
+             />
              <TranscriptPanel isOpen={showTranscript} onClose={() => setShowTranscript(false)} messages={messages} />
         </main>
         <div className="pb-12"><ControlTray isConnected={isConnected} isMicOn={isMicOn} isCamOn={isCamOn} isRecording={isRecording} onToggleMic={() => setIsMicOn(!isMicOn)} onToggleCam={toggleCam} onToggleRecord={toggleRecord} onConnect={handleConnect} onDisconnect={disconnect} /></div>

@@ -135,8 +135,6 @@ export function useLiveApi({ onConnectionChange, onTranscript, voiceName = 'Puck
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       // Enforce valid Live API models.
-      // Standard models (gemini-2.5-flash, gemini-3-pro, gpt-4) do NOT support bidiGenerateContent (websocket).
-      // We must switch to the native-audio preview model if an incompatible model is selected.
       let activeModel = model;
       const validLiveModels = [
         'gemini-2.5-flash-native-audio-preview-12-2025'
@@ -155,9 +153,9 @@ export function useLiveApi({ onConnectionChange, onTranscript, voiceName = 'Puck
             voiceConfig: { prebuiltVoiceConfig: { voiceName } },
           },
           systemInstruction: systemInstruction || "You are DasKartAI, a helpful, witty, and friendly AI assistant. You speak naturally, like a human, with concise responses. You can see what the user shows you via camera if enabled.",
-          // Fix: Use empty objects to enable transcription, do not pass "model" string
           inputAudioTranscription: {}, 
           outputAudioTranscription: {},
+          tools: [{ googleSearch: {} }], // Enable Google Search for grounding
         },
       };
 

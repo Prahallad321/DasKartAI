@@ -4,7 +4,7 @@ import {
   Send, X, MessageSquare, User, Sparkles, History, Menu, Trash2, Download, Copy, Edit, 
   MoreHorizontal, Headphones, Settings, Image as ImageIcon, PanelLeftClose, PanelLeft, 
   Search, Plus, Globe, ExternalLink, ChevronDown, Mic, AudioLines, FolderPlus, MonitorPlay,
-  ChevronUp, LogIn, Loader2, Volume2, MicOff, FileText, Camera, LayoutGrid, Zap, Play, Square, Video, Check, ShoppingBag, MapPin
+  ChevronUp, LogIn, Loader2, Volume2, MicOff, FileText, Camera, LayoutGrid, Zap, Play, Square, Video, Check, ShoppingBag, MapPin, Pause
 } from 'lucide-react';
 import { ChatMessage, User as UserType, Attachment } from '../types';
 import { getChats, deleteChat, clearAllChats, StoredChat } from '../utils/chat-storage';
@@ -253,6 +253,14 @@ export const Chat: React.FC<ChatProps> = ({
   const voiceStateRef = useRef(voiceState);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
 
+  // Audio Player State
+  const currentAudioContextRef = useRef<AudioContext | null>(null);
+  const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [isAudioActive, setIsAudioActive] = useState(false);
+  const [audioVolume, setAudioVolume] = useState(1.0);
+
   const [showVideoRecorder, setShowVideoRecorder] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -291,6 +299,37 @@ export const Chat: React.FC<ChatProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => stopAudio();
+  }, []);
+
+  const stopAudio = () => {
+      if (currentSourceRef.current) {
+          try { currentSourceRef.current.stop(); } catch(e) {}
+          currentSourceRef.current = null;
+      }
+      if (currentAudioContextRef.current) {
+          try { currentAudioContextRef.current.close(); } catch(e) {}
+          currentAudioContextRef.current = null;
+      }
+      setIsPlayingAudio(false);
+      setIsAudioActive(false);
+      setVoiceState('idle');
+  };
+
+  const toggleAudioPlayback = () => {
+      if (!currentAudioContextRef.current) return;
+      
+      if (currentAudioContextRef.current.state === 'running') {
+          currentAudioContextRef.current.suspend();
+          setIsPlayingAudio(false);
+      } else {
+          currentAudioContextRef.current.resume();
+          setIsPlayingAudio(true);
+      }
+  };
 
   // Sidebar Resize Logic
   useEffect(() => {
@@ -409,29 +448,49 @@ export const Chat: React.FC<ChatProps> = ({
     };
   }, []); // Empty dependency array ensures stable instance
 
-  // Updated speak function to use API for TTS
+  // Updated speak function to use API for TTS with Player
   const speak = async (text: string) => {
     if (!text) return;
+    
+    stopAudio(); // Stop any existing audio
     setVoiceState('speaking');
+    setIsAudioActive(true); // Show player
+    setIsPlayingAudio(false); // Waiting for buffer
+
     try {
        const audioBase64 = await api.generateSpeech(text);
        if (!audioBase64) throw new Error("No audio generated");
 
        // Gemini TTS returns raw PCM data, so we must decode it manually
        const audioBytes = decode(audioBase64);
-       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+       const audioContext = new AudioContextClass({ sampleRate: 24000 });
        const audioBuffer = await decodeAudioData(audioBytes, audioContext, 24000, 1);
        
        const source = audioContext.createBufferSource();
+       const gainNode = audioContext.createGain();
+       
+       gainNode.gain.value = audioVolume;
+       
        source.buffer = audioBuffer;
-       source.connect(audioContext.destination);
+       source.connect(gainNode);
+       gainNode.connect(audioContext.destination);
+       
        source.onended = () => {
+           setIsPlayingAudio(false);
+           setIsAudioActive(false);
            setVoiceState('idle');
-           // audioContext.close(); // Clean up context if needed, but keeping simple for now
        };
        source.start();
+       
+       currentAudioContextRef.current = audioContext;
+       currentSourceRef.current = source;
+       gainNodeRef.current = gainNode;
+       setIsPlayingAudio(true);
     } catch (e) {
        console.error("TTS Error", e);
+       setIsAudioActive(false);
+       setVoiceState('idle');
        // Fallback
        window.speechSynthesis.cancel();
        const utterance = new SpeechSynthesisUtterance(text);
@@ -457,6 +516,8 @@ export const Chat: React.FC<ChatProps> = ({
         recognitionRef.current?.stop();
         setVoiceState('idle');
     } else if (voiceState === 'speaking') {
+        // Stop both simple playback and robust player
+        stopAudio();
         window.speechSynthesis.cancel();
         setVoiceState('idle');
     } else if (voiceState === 'processing') {
@@ -831,6 +892,40 @@ export const Chat: React.FC<ChatProps> = ({
                 </div>
             )}
         </div>
+
+        {/* Floating Audio Player */}
+        {isAudioActive && (
+          <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 flex items-center gap-4 px-6 py-3 bg-slate-800/90 backdrop-blur-md border border-slate-700 rounded-full shadow-2xl animate-in slide-in-from-bottom-5">
+              <button onClick={toggleAudioPlayback} className="text-white hover:text-blue-400 transition-colors">
+                  {isPlayingAudio ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
+              </button>
+              
+              <div className="w-px h-6 bg-slate-600" />
+              
+              <div className="flex items-center gap-2 group relative">
+                  <Volume2 size={18} className="text-slate-400" />
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="1" 
+                    step="0.1" 
+                    value={audioVolume} 
+                    onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        setAudioVolume(val);
+                        if (gainNodeRef.current) gainNodeRef.current.gain.value = val;
+                    }}
+                    className="w-20 accent-blue-500 h-1.5 bg-slate-600 rounded-lg appearance-none cursor-pointer" 
+                  />
+              </div>
+
+              <div className="w-px h-6 bg-slate-600" />
+
+              <button onClick={stopAudio} className="text-slate-400 hover:text-red-400 transition-colors">
+                  <Square size={18} fill="currentColor" />
+              </button>
+          </div>
+        )}
 
         {/* Input Area - Always visible at bottom */}
         <div className="w-full absolute bottom-0 z-20 px-4 pb-4 md:pb-6 pt-10 bg-gradient-to-t from-slate-950 via-slate-950/90 to-transparent pointer-events-none">
