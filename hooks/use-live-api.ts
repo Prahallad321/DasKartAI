@@ -150,7 +150,8 @@ FORMATTING RULES (BOOK STYLE):
 1. Use Unicode characters for math (e.g., F = G(m₁ × m₂) / R²).
 2. Use '×' for multiplication. Use superscripts for powers (e.g., R²).
 3. Use subscripts for chemical formulas (e.g., H₂O).
-4. No Markdown code blocks. No LaTeX. Write naturally.`;
+4. No Markdown code blocks. No LaTeX. Write naturally.
+5. Use **Bold** for topics and # for enlarged headers. Use bullet points (- ).`;
 
       const config: any = {
         model: activeModel,

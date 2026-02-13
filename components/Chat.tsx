@@ -68,7 +68,64 @@ const TypingIndicator: React.FC = () => (
   </div>
 );
 
-// Restored Message Bubble (No Markdown, simple layout)
+// Helper for parsing bold only (**text**)
+const parseBold = (text: string) => {
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+            return <strong key={i} className="font-bold text-white">{part.slice(2, -2)}</strong>;
+        }
+        return part;
+    });
+};
+
+// Formatted Text Component for AI Messages
+const FormattedText: React.FC<{ text: string }> = ({ text }) => {
+  if (!text) return null;
+  const lines = text.split('\n');
+  return (
+    <div className="space-y-1">
+      {lines.map((line, i) => {
+        const trimmed = line.trim();
+        // Enlarged Header (#)
+        if (trimmed.startsWith('# ')) {
+           return <h1 key={i} className="text-xl md:text-2xl font-bold text-white mb-2 mt-3 leading-tight">{parseBold(trimmed.slice(2))}</h1>;
+        }
+        // Subheader (##)
+        if (trimmed.startsWith('## ')) {
+           return <h2 key={i} className="text-lg font-bold text-white mb-2 mt-2 leading-tight">{parseBold(trimmed.slice(3))}</h2>;
+        }
+        // Bullet points (- or *)
+        if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+           return (
+             <div key={i} className="flex items-start pl-4 text-slate-300 mb-1">
+               <span className="mr-2 text-slate-400">•</span>
+               <span className="leading-relaxed">{parseBold(trimmed.slice(2))}</span>
+             </div>
+           );
+        }
+        // Numbered lists (1. )
+        if (/^\d+\.\s/.test(trimmed)) {
+             return (
+                 <div key={i} className="font-bold text-blue-200 mt-2 mb-1 leading-relaxed">
+                     {parseBold(trimmed)}
+                 </div>
+             );
+        }
+        // Just Bold Topic Heading (if entire line is bold)
+        if (/^\*\*.*\*\*$/.test(trimmed) && trimmed.length < 60) {
+             return <div key={i} className="text-lg font-bold text-white mt-3 mb-1">{parseBold(trimmed)}</div>;
+        }
+        
+        // Empty lines
+        if (!trimmed) return <div key={i} className="h-1" />;
+
+        return <div key={i} className="text-slate-200 leading-relaxed">{parseBold(trimmed)}</div>;
+      })}
+    </div>
+  );
+};
+
 const MessageBubble: React.FC<{ 
   msg: ChatMessage, 
   user: UserType | null,
@@ -92,9 +149,9 @@ const MessageBubble: React.FC<{
     <div className={`w-full flex ${isUser ? 'justify-end' : 'justify-start'} py-2 px-4`}>
         <div className={`flex flex-col max-w-[85%] md:max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
             
-            <div className={`text-sm leading-relaxed whitespace-pre-wrap break-words ${
+            <div className={`text-sm leading-relaxed break-words ${
                 isUser 
-                    ? 'bg-blue-600 text-white px-4 py-3 rounded-2xl rounded-br-sm shadow-sm' 
+                    ? 'bg-blue-600 text-white px-4 py-3 rounded-2xl rounded-br-sm shadow-sm whitespace-pre-wrap' 
                     : 'text-slate-100 px-0 py-1' // Removed bg, border, reduced padding for AI
             }`}>
                 
@@ -116,7 +173,11 @@ const MessageBubble: React.FC<{
                 )}
 
                 {/* Text Content */}
-                {msg.text}
+                {isUser ? (
+                    msg.text
+                ) : (
+                    <FormattedText text={msg.text} />
+                )}
 
                 {/* Generated Media */}
                 {msg.image && (
@@ -602,9 +663,9 @@ export const Chat: React.FC<ChatProps> = ({
         </div>
         <div className="flex-1 overflow-y-auto px-2 space-y-1 scrollbar-thin scrollbar-thumb-slate-700 mt-2">
             <div className="text-xs font-bold text-slate-500 px-3 py-2">Recents</div>
-            {filteredHistory.map(chat => (
+            {filteredHistory.map((chat, index) => (
                 <div key={chat.id} onClick={() => handleNavClick(() => onLoadChat(chat))} className="group flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 rounded-lg cursor-pointer relative overflow-hidden">
-                    <span className="truncate flex-1 pr-4">{chat.title}</span>
+                    <span className="truncate flex-1 pr-4">{index + 1}. {chat.title}</span>
                     <button onClick={(e) => handleDeleteHistory(e, chat.id)} className="absolute right-2 opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400"><Trash2 size={14} /></button>
                 </div>
             ))}

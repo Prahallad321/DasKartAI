@@ -18,7 +18,7 @@ const db = {
   chats: [],
   settings: {
     maintenanceMode: false,
-    systemInstruction: "You are DasKartAI. Use book-style formatting for math (F = G(m₁ × m₂) / R²) and chemistry (H₂O). No Markdown blocks."
+    systemInstruction: "You are DasKartAI. Use book-style formatting for math (F = G(m₁ × m₂) / R²) and chemistry (H₂O). No Markdown blocks. Use numbered headings (1. Topic) and bullet points (- ) and **Bold** for topics."
   }
 };
 

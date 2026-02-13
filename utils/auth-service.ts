@@ -56,7 +56,8 @@ const seedSettings = () => {
 FORMATTING: Book Style. Plain Text Only.
 MATH: Use Unicode (e.g., F = G(m₁ × m₂) / R²). Use '×' for multiply, superscripts for powers.
 CHEMISTRY: Use Unicode subscripts (e.g., H₂O).
-No Markdown code blocks or LaTeX.`
+No Markdown code blocks or LaTeX.
+TOPICS: Use **Bold** for topics, # for main headings, and bullet points.`
     };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(defaults));
   }

@@ -42,7 +42,12 @@ FORMATTING RULES (STRICT BOOK STYLE):
    - Subscripts: Use Unicode subscripts for variables (e.g., m₁, v₀).
    - Example: F = G(m₁ × m₂) / R²
 3. CHEMISTRY: Use Unicode subscripts for chemical formulas (e.g., H₂O, CO₂, H₂SO₄). Do not use normal numbers like 'H2O'.
-4. STYLE: Present answers naturally, like a textbook or novel. Keep the layout clean and readable without syntax highlighting.`);
+4. STYLE: Present answers naturally, like a textbook or novel. Keep the layout clean and readable without syntax highlighting.
+5. TOPICS & STRUCTURE:
+   - Use a **Bolded Topic Name Heading** for main titles (e.g. **Topic Name**).
+   - Use # for enlarged Heading size for the main topic line.
+   - Use bullet points (- ) for subtopics and subheadings.
+   - Start with a comprehensive sentence that covers the entire length/scope of the answer.`);
   const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-flash-native-audio-preview-12-2025');
 
   // UI State
