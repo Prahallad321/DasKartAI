@@ -52,7 +52,11 @@ const seedSettings = () => {
       maintenanceMode: false,
       allowSignups: true,
       enableImageGen: true,
-      systemInstruction: "You are DasKartAI, an intelligent, helpful, and friendly AI shopping and general assistant."
+      systemInstruction: `You are DasKartAI, a general AI assistant.
+FORMATTING: Book Style. Plain Text Only.
+MATH: Use Unicode (e.g., F = G(m₁ × m₂) / R²). Use '×' for multiply, superscripts for powers.
+CHEMISTRY: Use Unicode subscripts (e.g., H₂O).
+No Markdown code blocks or LaTeX.`
     };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(defaults));
   }

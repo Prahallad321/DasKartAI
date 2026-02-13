@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Send, X, MessageSquare, User, Sparkles, History, Menu, Trash2, Download, Copy, Edit, 
@@ -11,7 +10,7 @@ import { getChats, deleteChat, clearAllChats, StoredChat } from '../utils/chat-s
 import { UserMenu } from './UserMenu';
 import { Logo } from './Logo';
 import { VideoRecorder } from './VideoRecorder';
-import { api } from '../services/api'; // Import API service
+import { api } from '../services/api';
 import { decode, decodeAudioData } from '../utils/audio-utils';
 
 interface ChatProps {
@@ -30,7 +29,6 @@ interface ChatProps {
   onModelChange: (model: string) => void;
 }
 
-// Full Model List Definition
 const ALL_MODELS = [
   { category: 'Gemini (Google)', items: [
       { id: 'gemini-2.5-flash-native-audio-preview-12-2025', label: 'Gemini 2.5 Flash Live', desc: 'Optimized for Real-time Audio/Video' },
@@ -61,165 +59,91 @@ const ALL_MODELS = [
   ]}
 ];
 
-// Helper: Text Highlighter
-const Highlighter: React.FC<{ text: string, highlight: string }> = ({ text, highlight }) => {
-  if (!highlight.trim()) return <>{text}</>;
-  const escapedHighlight = highlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`(${escapedHighlight})`, 'gi');
-  const parts = text.split(regex);
-  return <>{parts.map((part, i) => regex.test(part) ? <span key={i} className="bg-yellow-500/50 text-white font-medium rounded-[2px] px-0.5">{part}</span> : part)}</>;
-};
+// Simple Typing Indicator
+const TypingIndicator: React.FC = () => (
+  <div className="flex items-center gap-1.5 p-2 bg-slate-800 rounded-2xl rounded-bl-none w-16">
+    <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+    <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+    <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></div>
+  </div>
+);
 
-// Helper: Formatted Text
-const FormattedText: React.FC<{ text: string, highlight?: string }> = ({ text, highlight = '' }) => {
-  const parts = text.split(/(```[\s\S]*?```)/g);
-  return (
-    <div className="text-[15px] leading-7 break-words">
-      {parts.map((part, index) => {
-        if (part.startsWith('```') && part.endsWith('```')) {
-          const content = part.slice(3, -3).replace(/^.*\n/, '');
-          return (
-            <div key={index} className="relative group my-4 rounded-md overflow-hidden border border-slate-700 shadow-sm">
-               <div className="bg-slate-800 px-4 py-2 text-xs text-slate-400 flex justify-between items-center border-b border-slate-700">
-                  <span>Code</span>
-                  <button onClick={() => navigator.clipboard.writeText(content.trim())} className="flex items-center gap-1 hover:text-white"><Copy size={12} /> Copy</button>
-               </div>
-               <pre className="bg-slate-900 p-4 overflow-x-auto text-slate-200"><code className="font-mono text-sm">{content.trim()}</code></pre>
-            </div>
-          );
-        }
-        return <span key={index} className="whitespace-pre-wrap"><Highlighter text={part} highlight={highlight} /></span>;
-      })}
-    </div>
-  );
-};
-
-// Helper: Grounding Sources
-const GroundingSources: React.FC<{ metadata: any }> = ({ metadata }) => {
-  if (!metadata || !metadata.groundingChunks || !Array.isArray(metadata.groundingChunks)) return null;
-  
-  const sources = metadata.groundingChunks.map((chunk: any) => {
-      if (chunk.web) return { ...chunk.web, type: 'web' };
-      if (chunk.maps) return { ...chunk.maps, type: 'map' };
-      return null;
-  }).filter((s: any) => s && s.uri && s.title);
-
-  if (sources.length === 0) return null;
-
-  return (
-    <div className="mt-4 pt-4 border-t border-slate-700/50">
-      <div className="flex items-center gap-2 mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider"><Globe size={12} /> Sources</div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {sources.map((source: any, idx: number) => (
-          <a key={idx} href={source.uri} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 p-3 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 rounded-md transition-colors group">
-            <div className={`mt-0.5 p-1.5 rounded-md ${source.type === 'map' ? 'bg-red-500/10 text-red-400' : 'bg-blue-500/10 text-blue-400'}`}>
-                {source.type === 'map' ? <MapPin size={12} /> : <ExternalLink size={12} />}
-            </div>
-            <div className="flex-1 min-w-0">
-               <div className="text-sm font-medium text-slate-200 truncate group-hover:underline">{source.title}</div>
-               <div className="text-xs text-slate-500 truncate mt-0.5">{new URL(source.uri).hostname}</div>
-            </div>
-          </a>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// Helper: Attachments
-const AttachmentDisplay: React.FC<{ attachments: Attachment[] }> = ({ attachments }) => {
-  if (!attachments || attachments.length === 0) return null;
-  return (
-    <div className="flex flex-wrap gap-2 mb-3">
-      {attachments.map((att, idx) => (
-        <div key={idx} className="relative group overflow-hidden rounded-lg border border-slate-700">
-          {att.mimeType.startsWith('image/') ? (
-            <img src={`data:${att.mimeType};base64,${att.data}`} alt={att.name} className="h-32 w-auto object-cover"/>
-          ) : att.mimeType.startsWith('video/') ? (
-             <video src={`data:${att.mimeType};base64,${att.data}`} className="h-32 w-auto object-cover" controls/>
-          ) : (
-            <div className="flex items-center gap-2 p-3 bg-slate-800 h-full min-w-[120px]">
-              <FileText size={20} className="text-slate-400" />
-              <span className="text-xs text-slate-300 truncate max-w-[100px]">{att.name || 'Document'}</span>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-};
-
-// Helper: Message Bubble
-const MessageBubble: React.FC<{ msg: ChatMessage, highlight?: string, domRef?: React.Ref<HTMLDivElement>, onSpeak: (text: string) => void }> = ({ msg, highlight, domRef, onSpeak }) => {
+// Restored Message Bubble (No Markdown, simple layout)
+const MessageBubble: React.FC<{ 
+  msg: ChatMessage, 
+  user: UserType | null,
+  highlight?: string, 
+  onSpeak: (text: string) => void 
+}> = ({ msg, user, highlight, onSpeak }) => {
   const isUser = msg.role === 'user';
   
-  const formatTime = (ts: number) => {
-    return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+  // Check if this message is a loading state
+  const isLoading = msg.role === 'model' && !msg.text && !msg.isFinal && !msg.image && !msg.video;
 
-  const handleDownloadImage = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (msg.image) {
-      const link = document.createElement('a');
-      link.href = `data:image/png;base64,${msg.image}`;
-      link.download = `DasKartAI-Image-${Date.now()}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
+  if (isLoading) {
+      return (
+          <div className="w-full flex justify-start py-2 px-4">
+              <TypingIndicator />
+          </div>
+      );
+  }
 
   return (
-      <div ref={domRef} className={`w-full py-6 border-b border-white/5 ${!isUser ? 'bg-slate-900/50' : 'bg-transparent'}`}>
-        <div className="max-w-3xl mx-auto px-4 md:px-0 flex gap-4 md:gap-6">
-            <div className="flex-shrink-0 flex flex-col relative">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-lg ${isUser ? 'bg-blue-600' : 'bg-slate-800 ring-1 ring-white/10'}`}>
-                    {isUser ? <User size={16} className="text-white" /> : <Logo className="w-5 h-5" disableText />}
-                </div>
-            </div>
+    <div className={`w-full flex ${isUser ? 'justify-end' : 'justify-start'} py-2 px-4`}>
+        <div className={`flex flex-col max-w-[85%] md:max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
             
-            <div className="relative flex-1 overflow-hidden min-w-0 group/msg">
-                <div className="flex items-center gap-2 mb-1.5">
-                    <span className={`font-semibold text-sm ${isUser ? 'text-white' : 'text-blue-400'}`}>
-                        {isUser ? 'You' : 'DasKartAI'}
-                    </span>
-                    <span className="text-[10px] text-slate-500 font-medium">
-                        {formatTime(msg.timestamp)}
-                    </span>
-                    
-                    {!isUser && msg.text && (
-                        <button onClick={() => onSpeak(msg.text)} className="opacity-0 group-hover/msg:opacity-100 transition-opacity p-1.5 hover:bg-slate-800 rounded-md text-slate-500 hover:text-white ml-2" title="Read Aloud">
-                            <Volume2 size={12} />
-                        </button>
-                    )}
-                </div>
-
-                <div className="space-y-3 text-slate-300 leading-relaxed">
-                    {msg.attachments && <AttachmentDisplay attachments={msg.attachments} />}
-                    {msg.text && <FormattedText text={msg.text} highlight={highlight} />}
-                    
-                    {msg.image && (
-                        <div className="relative mt-2 max-w-sm rounded-xl overflow-hidden border border-slate-700 group/image shadow-xl">
-                            <img src={`data:image/png;base64,${msg.image}`} alt="Generated by AI" className="w-full h-auto object-cover"/>
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center">
-                                <button onClick={handleDownloadImage} className="p-2 bg-slate-900/80 backdrop-blur rounded-full hover:bg-black text-white transition-colors border border-white/10" title="Download Image">
-                                    <Download size={20} />
-                                </button>
+            <div className={`text-sm leading-relaxed whitespace-pre-wrap break-words ${
+                isUser 
+                    ? 'bg-blue-600 text-white px-4 py-3 rounded-2xl rounded-br-sm shadow-sm' 
+                    : 'text-slate-100 px-0 py-1' // Removed bg, border, reduced padding for AI
+            }`}>
+                
+                {/* Attachments */}
+                {msg.attachments && msg.attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                        {msg.attachments.map((att, i) => (
+                            <div key={i} className="rounded-lg overflow-hidden border border-white/20">
+                                {att.mimeType.startsWith('image/') ? (
+                                    <img src={`data:${att.mimeType};base64,${att.data}`} className="h-20 w-auto object-cover" />
+                                ) : (
+                                    <div className="h-20 w-20 bg-white/10 flex items-center justify-center">
+                                        <FileText size={24} />
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    )}
-                    
-                    {msg.video && (
-                        <div className="relative mt-2 max-w-sm rounded-xl overflow-hidden border border-slate-700 shadow-xl">
-                            <video controls src={`data:video/mp4;base64,${msg.video}`} className="w-full h-auto bg-black" />
-                        </div>
-                    )}
-                    
-                    {msg.groundingMetadata && <GroundingSources metadata={msg.groundingMetadata} />}
-                </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Text Content */}
+                {msg.text}
+
+                {/* Generated Media */}
+                {msg.image && (
+                    <div className="mt-3 rounded-xl overflow-hidden border border-white/10">
+                        <img src={`data:image/png;base64,${msg.image}`} className="w-full h-auto object-cover" />
+                    </div>
+                )}
+                {msg.video && (
+                    <div className="mt-3 rounded-xl overflow-hidden border border-white/10">
+                        <video controls src={`data:video/mp4;base64,${msg.video}`} className="w-full h-auto bg-black" />
+                    </div>
+                )}
             </div>
+
+            {/* Actions Row */}
+            {!isUser && msg.text && (
+                <div className="flex items-center gap-2 mt-1 px-0 opacity-50 hover:opacity-100 transition-opacity">
+                    <button onClick={() => onSpeak(msg.text)} className="p-1 text-slate-500 hover:text-blue-400">
+                        <Volume2 size={14} />
+                    </button>
+                    <button onClick={() => navigator.clipboard.writeText(msg.text)} className="p-1 text-slate-500 hover:text-white">
+                        <Copy size={14} />
+                    </button>
+                </div>
+            )}
         </div>
-      </div>
+    </div>
   );
 };
 
@@ -751,7 +675,7 @@ export const Chat: React.FC<ChatProps> = ({
              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Recent Transcript</div>
              <div className="space-y-3">
                  {messages.filter(m => m.role === 'user' || m.role === 'model').slice(-10).reverse().map(msg => (
-                     <div key={msg.id} className={`text-sm p-3 rounded-lg ${msg.role === 'user' ? 'bg-slate-800 text-slate-300' : 'bg-blue-900/20 text-blue-200'}`}>
+                     <div key={msg.id} className={`text-sm p-3 rounded-lg ${msg.role === 'user' ? 'bg-slate-800 text-slate-300' : 'text-blue-200'}`}>
                          <div className="text-[10px] opacity-50 mb-1 uppercase font-bold flex items-center gap-1">
                              {msg.role === 'user' ? <User size={10} /> : <Sparkles size={10} />}
                              {msg.role === 'user' ? 'You' : 'AI Assistant'}
@@ -884,6 +808,7 @@ export const Chat: React.FC<ChatProps> = ({
                         <MessageBubble 
                             key={msg.id} 
                             msg={msg} 
+                            user={user}
                             highlight={isSearchOpen ? searchQuery : ''}
                             onSpeak={speak}
                         />

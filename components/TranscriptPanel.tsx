@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Search, User, Sparkles, Copy, Check, ArrowDown, AudioLines } from 'lucide-react';
 import { ChatMessage } from '../types';
@@ -116,10 +115,10 @@ export const TranscriptPanel: React.FC<TranscriptPanelProps> = ({ isOpen, onClos
                     </span>
                   </div>
                   
-                  <div className={`group relative p-3.5 rounded-2xl text-sm leading-relaxed border ${
+                  <div className={`group relative text-sm leading-relaxed ${
                     isUser 
-                      ? 'bg-orange-600/10 border-orange-500/30 text-orange-100 rounded-tr-none' 
-                      : 'bg-blue-600/10 border-blue-500/30 text-blue-100 rounded-tl-none'
+                      ? 'p-3.5 bg-orange-600/10 border border-orange-500/30 text-orange-100 rounded-2xl rounded-tr-none' 
+                      : 'py-1 text-blue-100' // Removed box styling for AI
                   }`}>
                     {/* Message Text */}
                     {msg.text}
@@ -127,7 +126,7 @@ export const TranscriptPanel: React.FC<TranscriptPanelProps> = ({ isOpen, onClos
                     {/* Copy Button */}
                     <button
                       onClick={() => handleCopy(msg.text, msg.id)}
-                      className={`absolute top-2 ${isUser ? 'left-2' : 'right-2'} p-1.5 rounded-md bg-black/20 text-white/50 opacity-0 group-hover:opacity-100 hover:bg-black/40 hover:text-white transition-all`}
+                      className={`absolute top-2 ${isUser ? 'left-2' : '-right-8'} p-1.5 rounded-md bg-black/20 text-white/50 opacity-0 group-hover:opacity-100 hover:bg-black/40 hover:text-white transition-all`}
                       title="Copy text"
                     >
                       {copiedId === msg.id ? <Check size={12} /> : <Copy size={12} />}

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, MessageSquare, User, Sparkles } from 'lucide-react';
 import { ChatMessage } from '../types';
@@ -80,10 +79,10 @@ export const LiveChat: React.FC<LiveChatProps> = ({ isOpen, onClose, messages, o
                         {isUser ? <User size={14} className="text-white" /> : <Sparkles size={14} className="text-white" />}
                     </div>
                     <div className={`flex flex-col max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
-                        <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
+                        <div className={`px-4 py-2.5 text-sm leading-relaxed ${
                             isUser 
-                                ? 'bg-indigo-600 text-white rounded-br-none' 
-                                : 'bg-slate-800 text-slate-200 rounded-bl-none border border-white/5'
+                                ? 'bg-indigo-600 text-white rounded-2xl rounded-br-none shadow-sm' 
+                                : 'text-slate-200 px-0 py-1' // Removed box styling for AI
                         }`}>
                             {msg.text}
                         </div>

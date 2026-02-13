@@ -145,6 +145,13 @@ export function useLiveApi({ onConnectionChange, onTranscript, voiceName = 'Puck
          activeModel = 'gemini-2.5-flash-native-audio-preview-12-2025';
       }
 
+      const defaultInstruction = `You are DasKartAI.
+FORMATTING RULES (BOOK STYLE):
+1. Use Unicode characters for math (e.g., F = G(m₁ × m₂) / R²).
+2. Use '×' for multiplication. Use superscripts for powers (e.g., R²).
+3. Use subscripts for chemical formulas (e.g., H₂O).
+4. No Markdown code blocks. No LaTeX. Write naturally.`;
+
       const config: any = {
         model: activeModel,
         config: {
@@ -152,7 +159,7 @@ export function useLiveApi({ onConnectionChange, onTranscript, voiceName = 'Puck
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName } },
           },
-          systemInstruction: systemInstruction || "You are DasKartAI, a helpful, witty, and friendly AI assistant. You speak naturally, like a human, with concise responses. You can see what the user shows you via camera if enabled.",
+          systemInstruction: systemInstruction || defaultInstruction,
           inputAudioTranscription: {}, 
           outputAudioTranscription: {},
           tools: [{ googleSearch: {} }], // Enable Google Search for grounding

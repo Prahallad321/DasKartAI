@@ -1,5 +1,4 @@
-
-import { GoogleGenAI, Type, Modality } from "@google/genai";
+import { GoogleGenAI, Type, Modality, GenerateContentResponse } from "@google/genai";
 import { ChatMessage, Attachment, User } from "../types";
 import { authService } from "../utils/auth-service";
 
@@ -13,6 +12,37 @@ class ApiService {
 
   constructor() {
     this.useBackend = !!process.env.VITE_API_URL;
+  }
+
+  // Helper: Retry Operation with Exponential Backoff
+  private async retryOperation<T>(operation: () => Promise<T>, maxRetries = 3, initialDelay = 1000): Promise<T> {
+    let lastError: any;
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await operation();
+      } catch (error: any) {
+        lastError = error;
+        // Check for 503 (Service Unavailable) or 429 (Too Many Requests) or specific message
+        const errorCode = error?.status || error?.code || error?.error?.code;
+        const errorMessage = error?.message || error?.error?.message || '';
+        
+        const isTransient = 
+            errorCode === 503 || 
+            errorCode === 429 || 
+            errorMessage.includes('high demand') ||
+            errorMessage.includes('temporarily overloaded') ||
+            errorMessage.includes('temporary');
+
+        if (!isTransient || i === maxRetries - 1) {
+          throw error;
+        }
+
+        const delay = initialDelay * Math.pow(2, i);
+        console.warn(`API Busy (${errorCode}). Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+    throw lastError;
   }
 
   // Helper to enforce subscription
@@ -98,7 +128,7 @@ class ApiService {
     if (!CLIENT_API_KEY) throw new Error("No API Key");
     const ai = new GoogleGenAI({ apiKey: CLIENT_API_KEY });
     
-    const response = await ai.models.generateContent({
+    const response = await this.retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text }] }],
       config: {
@@ -109,7 +139,7 @@ class ApiService {
           },
         },
       },
-    });
+    }));
 
     return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || '';
   }
@@ -119,7 +149,7 @@ class ApiService {
     if (!CLIENT_API_KEY) throw new Error("No API Key");
     const ai = new GoogleGenAI({ apiKey: CLIENT_API_KEY });
 
-    const response = await ai.models.generateContent({
+    const response = await this.retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: {
         parts: [
@@ -127,7 +157,7 @@ class ApiService {
           { text: "Transcribe this audio exactly as spoken." }
         ]
       }
-    });
+    }));
 
     return response.text || "";
   }
@@ -159,11 +189,11 @@ class ApiService {
     
     parts.push({ text: prompt });
 
-    const response = await ai.models.generateContent({
+    const response = await this.retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
         model: targetModel,
         contents: { parts },
         config: config
-    });
+    }));
 
     let generatedImage: string | undefined;
     if (response.candidates?.[0]?.content?.parts) {
@@ -201,17 +231,21 @@ class ApiService {
         };
     }
 
-    let operation = await ai.models.generateVideos(request);
+    // Wrap initial generation call
+    // Use any for operation to resolve type errors with preview API
+    let operation = await this.retryOperation<any>(() => ai.models.generateVideos(request));
 
     while (!operation.done) {
       await new Promise(resolve => setTimeout(resolve, 5000));
-      operation = await ai.operations.getVideosOperation({operation: operation});
+      // Retry getting operation status if it fails momentarily
+      operation = await this.retryOperation<any>(() => ai.operations.getVideosOperation({operation: operation}));
     }
 
     const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
     if (!videoUri) throw new Error("Video generation failed");
 
-    const videoRes = await fetch(`${videoUri}&key=${CLIENT_API_KEY}`);
+    // Fetch video bytes
+    const videoRes = await this.retryOperation(() => fetch(`${videoUri}&key=${CLIENT_API_KEY}`));
     const blob = await videoRes.blob();
     
     const base64Video = await new Promise<string>((resolve) => {
@@ -279,7 +313,7 @@ class ApiService {
             return await this.generateVideo(text, contextImageBase64, model, options);
         } catch (e: any) {
             console.error("Veo Error:", e);
-            return { text: "Video generation failed: " + e.message };
+            throw e; // Let the caller handle the error display
         }
     }
 
@@ -288,7 +322,7 @@ class ApiService {
             return await this.generateImage(text, contextImageBase64, model, options);
         } catch (e: any) {
             console.error("Image Gen Error:", e);
-            return { text: "Image generation failed: " + e.message };
+            throw e;
         }
     }
 
@@ -365,9 +399,10 @@ class ApiService {
         currentParts.push({ inlineData: { mimeType: att.mimeType, data: att.data } });
     });
 
-    const result = await chat.sendMessage({ 
+    // Wrap the chat sendMessage call with retry logic
+    const result = await this.retryOperation<GenerateContentResponse>(() => chat.sendMessage({ 
         message: attachments.length > 0 ? currentParts : text 
-    });
+    }));
     
     return {
         text: result.text || '',
